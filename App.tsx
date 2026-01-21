@@ -5,14 +5,13 @@ import Sidebar from './components/Sidebar';
 import BookmarksPanel from './components/BookmarksPanel';
 import CommentaryCard from './components/CommentaryCard';
 import CMSPanel from './components/CMSPanel';
-import InfoModal from './components/InfoModal';
 import DonatePage from './components/DonatePage';
 import ContributePage from './components/ContributePage';
 import ProjectsPage from './components/ProjectsPage';
 import { Menu, Search, Moon, Sun, ChevronLeft, ChevronRight, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, Filter, BookOpen, Globe, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid } from 'lucide-react';
 
 // --- CONFIGURATION ---
-const LANDING_BG_IMAGE = "https://images.unsplash.com/photo-1603217277800-4497e0eb7e3e?q=80&w=2600&auto=format&fit=crop";
+const LANDING_BG_IMAGE = "https://cdn.discordapp.com/attachments/1463493365734707313/1463519282431398069/20251230_212208.jpg";
 
 // --- SUB-COMPONENTS ---
 
@@ -111,9 +110,14 @@ const App: React.FC = () => {
             setChapters(bookChapters);
             setAllVerses(bookVerses);
             
-            const verseExists = currentVerse && bookVerses.some(v => v.id === currentVerse.id);
             if (bookVerses.length > 0) {
-                 if (!currentVerse || !verseExists) {
+                 // Try to keep the same verse ID if switching books, or default to first
+                 // Critical Fix: Always get the *new* verse object even if ID matches
+                 const matchingVerse = currentVerse ? bookVerses.find(v => v.id === currentVerse.id) : null;
+                 
+                 if (matchingVerse) {
+                     setCurrentVerse(matchingVerse);
+                 } else {
                      setCurrentVerse(bookVerses[0]);
                  }
             }
@@ -283,12 +287,17 @@ const App: React.FC = () => {
             <div className="min-h-screen bg-stone-900 flex flex-col items-center relative overflow-hidden font-sans">
                 
                 <div className="absolute inset-0 z-0">
-                    <img src={LANDING_BG_IMAGE} alt="Background" className="w-full h-full object-cover opacity-60" />
+                    <img 
+                      src={LANDING_BG_IMAGE} 
+                      alt="Background" 
+                      className="w-full h-full object-cover opacity-50" 
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/20"></div>
                     <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent h-40"></div>
                 </div>
 
-                {/* Header Buttons Removed from Landing Page as per previous request */}
+                {/* Header Buttons Removed from Landing Page */}
 
                 <div className="w-full p-4 flex justify-center items-center z-10 pt-8 sm:pt-12">
                   <form onSubmit={handleHomeSearch} className="w-full max-w-lg relative">
