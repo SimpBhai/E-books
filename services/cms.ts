@@ -1,143 +1,103 @@
 import { Contribution, User, UserRole, Verse, ContributorStat } from '../types';
 
-// Mock Auth Keys
+// --- AUTHENTICATION CONFIGURATION ---
+// Since this is a serverless/static application, users are defined here.
+// TO ADD A NEW USER:
+// 1. Pick a secret "Auth Key" (password).
+// 2. Add an entry to the object below.
+
 const AUTH_KEYS: Record<string, User> = {
+  // MASTER ADMIN (Access to Review Queue & Stats)
   'admin-secret': { role: 'admin', name: 'Site Owner' },
-  'writer-secret': { role: 'contributor', name: 'Contributor' },
-  'guest-secret': { role: 'contributor', name: 'Guest Writer' }
+
+  // CONTRIBUTORS (Can submit content only)
+  'writer-01': { role: 'contributor', name: 'Guest Scholar' },
+  'demo-user': { role: 'contributor', name: 'Demo User' }
 };
 
-const STORAGE_KEY_PENDING = 'cms_pending_contributions';
-const STORAGE_KEY_APPROVED = 'cms_approved_data';
-const STORAGE_KEY_HISTORY = 'cms_history_log';
-
-// --- Auth Service ---
+// --- AUTH SERVICES ---
 
 export const loginWithKey = (key: string): User | null => {
   return AUTH_KEYS[key] || null;
 };
 
-// --- CMS Logic ---
+// --- DATA PERSISTENCE (Local Storage for Demo) ---
+// In a real app, these would be API calls to a backend.
+
+const STORAGE_KEYS = {
+  CONTRIBUTIONS: 'sutra_cms_contributions',
+  OVERRIDES: 'sutra_cms_overrides' // Approved content that replaces static data
+};
+
+const getStoredContributions = (): Contribution[] => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.CONTRIBUTIONS);
+    return data ? JSON.parse(data) : [];
+  } catch { return []; }
+};
+
+const saveContributions = (data: Contribution[]) => {
+  localStorage.setItem(STORAGE_KEYS.CONTRIBUTIONS, JSON.stringify(data));
+};
+
+// --- CONTRIBUTION WORKFLOW ---
 
 export const submitContribution = (contribution: Contribution): void => {
-  const current = getPendingContributions();
+  const current = getStoredContributions();
   current.push(contribution);
-  localStorage.setItem(STORAGE_KEY_PENDING, JSON.stringify(current));
-  
-  // Log to history for analytics (initial state)
-  logHistory(contribution);
+  saveContributions(current);
 };
 
 export const getPendingContributions = (): Contribution[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_PENDING);
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
+  return getStoredContributions().filter(c => c.status === 'pending');
 };
 
 export const updateContributionStatus = (id: string, status: 'approved' | 'rejected'): void => {
-  const current = getPendingContributions();
-  const index = current.findIndex(c => c.id === id);
+  const all = getStoredContributions();
+  const index = all.findIndex(c => c.id === id);
   
   if (index !== -1) {
-    const contribution = current[index];
-    contribution.status = status;
-    
+    all[index].status = status;
+    saveContributions(all);
+
+    // If approved, move to "Active Overrides" so it appears in the library
     if (status === 'approved') {
-      // Move to "Production" Database
-      saveApprovedVerse(contribution.bookId, contribution.content);
-      // Remove from pending
-      current.splice(index, 1);
-    } else if (status === 'rejected') {
-      // Just remove from list
-      current.splice(index, 1);
+        const activeOverrides = getActiveOverrides();
+        // Create a unique key for the override: BookId + VerseId
+        const key = `${all[index].bookId}-${all[index].verseId}`;
+        activeOverrides[key] = all[index].content;
+        localStorage.setItem(STORAGE_KEYS.OVERRIDES, JSON.stringify(activeOverrides));
     }
-    
-    localStorage.setItem(STORAGE_KEY_PENDING, JSON.stringify(current));
-    
-    // Update history log
-    logHistory(contribution);
   }
 };
-
-// Helper to log history for analytics
-const logHistory = (contribution: Contribution) => {
-  try {
-    const historyData = localStorage.getItem(STORAGE_KEY_HISTORY);
-    let history: Contribution[] = historyData ? JSON.parse(historyData) : [];
-    
-    // Update existing entry or add new
-    const existingIdx = history.findIndex(h => h.id === contribution.id);
-    if (existingIdx > -1) {
-      history[existingIdx] = contribution;
-    } else {
-      history.push(contribution);
-    }
-    
-    localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
-  } catch (e) {
-    console.error("Failed to log history", e);
-  }
-};
-
-// --- Analytics ---
 
 export const getContributorStats = (): ContributorStat[] => {
-  try {
-    // We calculate stats from the History Log + Current Pending
-    const historyData = localStorage.getItem(STORAGE_KEY_HISTORY);
-    const history: Contribution[] = historyData ? JSON.parse(historyData) : [];
-    
-    const statsMap: Record<string, ContributorStat> = {};
-    
-    history.forEach(c => {
-      if (!statsMap[c.contributorName]) {
-        statsMap[c.contributorName] = { name: c.contributorName, pending: 0, approved: 0, rejected: 0 };
-      }
-      
-      if (c.status === 'approved') statsMap[c.contributorName].approved++;
-      else if (c.status === 'rejected') statsMap[c.contributorName].rejected++;
-      else if (c.status === 'pending') statsMap[c.contributorName].pending++;
-    });
-    
-    return Object.values(statsMap);
-  } catch (e) {
-    return [];
-  }
+  const all = getStoredContributions();
+  const statsMap: Record<string, ContributorStat> = {};
+
+  all.forEach(c => {
+    if (!statsMap[c.contributorName]) {
+      statsMap[c.contributorName] = { name: c.contributorName, pending: 0, approved: 0, rejected: 0 };
+    }
+    statsMap[c.contributorName][c.status]++;
+  });
+
+  return Object.values(statsMap);
 };
 
-// --- Production Data Overrides ---
+// --- LIBRARY INTEGRATION ---
 
-// We store approved verses as a map: { "bookId:verseId": VerseObject }
-export const saveApprovedVerse = (bookId: string, verse: Verse) => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_APPROVED);
-    const approvedMap = data ? JSON.parse(data) : {};
-    
-    // Since 'verse' object passed here (from CMSPanel) is a CLONE of the existing verse
-    // WITH the new contribution appended to it, we can safely overwrite/merge 
-    // the whole object for this key.
-    
-    const key = `${bookId}:${verse.id}`;
-    
-    // We treat 'verse' as the master source of truth for this ID now.
-    approvedMap[key] = verse;
-    
-    localStorage.setItem(STORAGE_KEY_APPROVED, JSON.stringify(approvedMap));
-  } catch (e) {
-    console.error("Failed to save approved verse", e);
-  }
+// Helper to get active overrides
+const getActiveOverrides = (): Record<string, Verse> => {
+    try {
+        const data = localStorage.getItem(STORAGE_KEYS.OVERRIDES);
+        return data ? JSON.parse(data) : {};
+    } catch { return {}; }
 };
 
+// Used by library.ts to check if there is a CMS update for a specific verse
 export const getApprovedOverride = (bookId: string, verseId: string): Verse | null => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_APPROVED);
-    if (!data) return null;
-    const approvedMap = JSON.parse(data);
-    return approvedMap[`${bookId}:${verseId}`] || null;
-  } catch (e) {
-    return null;
-  }
+    const overrides = getActiveOverrides();
+    const key = `${bookId}-${verseId}`;
+    return overrides[key] || null;
 };

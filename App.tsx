@@ -5,14 +5,22 @@ import Sidebar from './components/Sidebar';
 import BookmarksPanel from './components/BookmarksPanel';
 import CommentaryCard from './components/CommentaryCard';
 import CMSPanel from './components/CMSPanel';
-import { Menu, Search, Moon, Sun, ChevronLeft, ChevronRight, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, Filter, BookOpen, Globe, Edit3, Loader2 } from 'lucide-react';
+import InfoModal from './components/InfoModal';
+import { Menu, Search, Moon, Sun, ChevronLeft, ChevronRight, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, Filter, BookOpen, Globe, Loader2, Facebook, Youtube, Heart, CircleHelp, BookOpenText, Feather, HeartHandshake, X } from 'lucide-react';
 
 const App: React.FC = () => {
   // Navigation State
+  const [showLanding, setShowLanding] = useState(true);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoadingBook, setIsLoadingBook] = useState(false);
   
+  // Library Search State (For finding books)
+  const [libraryQuery, setLibraryQuery] = useState('');
+
+  // Reader Search State (For finding verses)
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Reader State
   const [currentVerse, setCurrentVerse] = useState<Verse | null>(null);
   
@@ -27,8 +35,8 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
   const [isCMSOpen, setIsCMSOpen] = useState(false); // CMS State
+  const [isInfoOpen, setIsInfoOpen] = useState(false); // Info Modal State
   
-  const [searchQuery, setSearchQuery] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -55,33 +63,50 @@ const App: React.FC = () => {
 
   // Load book content (ASYNC)
   useEffect(() => {
+    let isMounted = true;
     const loadBook = async () => {
       if (selectedBook) {
         setIsLoadingBook(true);
+        // Clear previous context to avoid stale data display
+        if (isMounted) {
+            setChapters([]);
+            setAllVerses([]);
+        }
+
         try {
           const bookChapters = await getBookContent(selectedBook.id);
           const bookVerses = await getAllVerses(selectedBook.id);
           
-          setChapters(bookChapters);
-          setAllVerses(bookVerses);
-          
-          // Select first verse by default if none is selected
-          if (bookVerses.length > 0 && !currentVerse) {
-            setCurrentVerse(bookVerses[0]);
+          if (isMounted) {
+            setChapters(bookChapters);
+            setAllVerses(bookVerses);
+            
+            // Check if we need to set a default verse
+            // Logic: If currentVerse is null OR the currentVerse doesn't belong to the new book (simple ID check)
+            const verseExists = currentVerse && bookVerses.some(v => v.id === currentVerse.id);
+            
+            if (bookVerses.length > 0) {
+                 if (!currentVerse || !verseExists) {
+                     setCurrentVerse(bookVerses[0]);
+                 }
+            }
           }
         } catch (error) {
           console.error("Error loading book:", error);
         } finally {
-          setIsLoadingBook(false);
+          if (isMounted) setIsLoadingBook(false);
         }
       } else {
-        setChapters([]);
-        setAllVerses([]);
-        setCurrentVerse(null);
+        if (isMounted) {
+            setChapters([]);
+            setAllVerses([]);
+            setCurrentVerse(null);
+        }
       }
     };
 
     loadBook();
+    return () => { isMounted = false; };
   }, [selectedBook]);
 
   // Reset View selections when verse changes
@@ -112,11 +137,11 @@ const App: React.FC = () => {
   const handleBookmarkNavigation = async (bookId: string, verseId: string) => {
     const book = getBookMetadata(bookId);
     if (book) {
+      setShowLanding(false); // Ensure we leave landing page
       // 1. Set book (triggers loading effect)
       setSelectedBook(book);
       
       // 2. Fetch specific verse asynchronously (might be faster than full load)
-      // Note: The useEffect will also fire, but this ensures we target the specific verse
       const targetVerse = await getVerseById(bookId, verseId);
       if (targetVerse) {
         setCurrentVerse(targetVerse);
@@ -157,6 +182,18 @@ const App: React.FC = () => {
     if (idx > 0) setCurrentVerse(allVerses[idx - 1]);
   };
 
+  const handleHomeSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowLanding(false);
+  };
+
+  // Filter books in library view
+  const filteredBooks = books.filter(b => 
+    b.title.toLowerCase().includes(libraryQuery.toLowerCase()) || 
+    b.author.toLowerCase().includes(libraryQuery.toLowerCase()) ||
+    b.category.toLowerCase().includes(libraryQuery.toLowerCase())
+  );
+
   const filteredVerses = selectedBook && searchQuery.length > 1
     ? allVerses.filter(v => v.sanskrit.includes(searchQuery) || v.id.includes(searchQuery))
     : [];
@@ -190,6 +227,21 @@ const App: React.FC = () => {
     ...(currentVerse.summary?.map(s => s.language) || [])
   ])).sort() : [];
 
+  // --- GLOBAL HEADER BUTTONS COMPONENT ---
+  const GlobalHeaderButtons = () => (
+    <div className="flex items-center space-x-1 md:space-x-2">
+       <button onClick={() => setIsInfoOpen(true)} className="p-2 hover:bg-stone-100 rounded-full text-stone-500 hover:text-red-500 transition-colors" title="Donate">
+          <Heart size={20} />
+       </button>
+       <button onClick={() => setIsInfoOpen(true)} className="p-2 hover:bg-stone-100 rounded-full text-stone-500 hover:text-blue-600 transition-colors" title="About & Contribute">
+          <CircleHelp size={20} />
+       </button>
+       <button onClick={() => setDarkMode(!darkMode)} className="p-2 hover:bg-stone-100 rounded-full text-stone-500 hover:text-stone-800 transition-colors">
+          {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+       </button>
+    </div>
+  );
+
   // --- RENDER ---
   
   return (
@@ -197,6 +249,7 @@ const App: React.FC = () => {
       
       {/* Global Modals */}
       <CMSPanel isOpen={isCMSOpen} onClose={() => setIsCMSOpen(false)} books={books} />
+      <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} onOpenCMS={() => setIsCMSOpen(true)} />
       
       <BookmarksPanel 
         bookmarks={bookmarks}
@@ -206,47 +259,195 @@ const App: React.FC = () => {
         onRemoveBookmark={toggleBookmark}
       />
 
-      {/* VIEW: LIBRARY */}
+      {/* VIEW SELECTION */}
       {!selectedBook ? (
+        showLanding ? (
+            /* --- LANDING PAGE (Ashtadhyayi Style) --- */
+            <div className="min-h-screen bg-[#fdf8f0] flex flex-col items-center relative overflow-hidden font-sans">
+                {/* Top Actions */}
+                <div className="absolute top-4 right-4 z-20 flex gap-2">
+                     <GlobalHeaderButtons />
+                </div>
+
+                {/* Top Search Bar */}
+                <div className="w-full p-4 flex justify-center items-center z-10 pt-8 sm:pt-12">
+                  <form onSubmit={handleHomeSearch} className="w-full max-w-lg relative drop-shadow-md">
+                      <input 
+                        type="text" 
+                        placeholder="Search Library..."
+                        value={libraryQuery}
+                        onChange={(e) => setLibraryQuery(e.target.value)}
+                        className="w-full py-3 pl-12 pr-4 rounded bg-white border border-stone-300 focus:outline-none focus:ring-2 focus:ring-ochre-800 text-stone-700 placeholder-stone-400 shadow-sm"
+                      />
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
+                      <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-stone-100 rounded hover:bg-stone-200 transition-colors">
+                          <ArrowRight size={16} className="text-stone-600" />
+                      </button>
+                  </form>
+               </div>
+
+               {/* Main Scroll Content */}
+               <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl px-4 py-6">
+                  <h1 className="text-3xl md:text-4xl font-deva font-bold text-stone-900 mb-8 drop-shadow-sm">|| तस्मै पाणिनये नमः ||</h1>
+                  
+                  {/* The Scroll Graphic */}
+                  <div className="relative w-full max-w-lg mx-auto">
+                     {/* Top Handle */}
+                     <div className="h-8 w-[108%] -ml-[4%] bg-gradient-to-r from-[#3e2723] via-[#5d4037] to-[#3e2723] rounded-full shadow-lg relative z-20 flex items-center justify-between px-2">
+                        <div className="w-5 h-5 bg-[#271916] rounded-full opacity-60"></div>
+                        <div className="w-5 h-5 bg-[#271916] rounded-full opacity-60"></div>
+                     </div>
+                     
+                     {/* Paper Body */}
+                     <div className="bg-[#f7ebd4] shadow-2xl px-6 py-10 md:py-16 text-center relative z-10 mx-auto w-[96%] border-x-2 border-[#e6d6b6]">
+                        {/* Inner Shadow Gradient */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/10 pointer-events-none"></div>
+                        
+                        <div className="space-y-6 text-[#3e2723] font-deva text-lg md:text-xl leading-relaxed font-medium relative z-10">
+                           <p>येनाक्षरसमाम्नायमधिगम्य महेश्वरात् ।<br/>कृत्स्नं व्याकरणं प्रोक्तं तस्मै पाणिनये नमः ॥</p>
+                           <p>येन धौता गिरः पुंसां विमलैः शब्दवारिभिः ।<br/>तमश्चाज्ञानजं भिन्नं तस्मै पाणिनये नमः ॥</p>
+                           <p>अज्ञानान्धस्य लोकस्य ज्ञानाञ्जनशलाकया ।<br/>चक्षुरुन्मीलितं येन तस्मै पाणिनये नमः ॥</p>
+                           <div className="w-16 h-0.5 bg-[#3e2723]/20 mx-auto my-4"></div>
+                           <p className="text-base md:text-lg">
+                              वाक्यकारं वररुचिं भाष्यकारं पतञ्जलिम् ।<br/>पाणिनिं सूत्रकारं च प्रणतोऽस्मि मुनित्रयम् ॥
+                           </p>
+                        </div>
+                     </div>
+
+                     {/* Bottom Handle */}
+                     <div className="h-8 w-[108%] -ml-[4%] bg-gradient-to-r from-[#3e2723] via-[#5d4037] to-[#3e2723] rounded-full shadow-lg relative z-20 flex items-center justify-between px-2 -mt-1">
+                        <div className="w-5 h-5 bg-[#271916] rounded-full opacity-60"></div>
+                        <div className="w-5 h-5 bg-[#271916] rounded-full opacity-60"></div>
+                     </div>
+                  </div>
+               </div>
+
+               {/* Action Buttons (Small Icons) */}
+               <div className="w-full max-w-4xl px-6 pb-12 z-10 mt-8">
+                   <div className="flex justify-center gap-8 md:gap-16">
+                       
+                       {/* E-pustakam Button */}
+                       <button 
+                            onClick={() => setShowLanding(false)} 
+                            className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1"
+                       >
+                            <div className="w-16 h-16 bg-[#5d4037] text-[#f5e6ca] rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:bg-[#4e342e] transition-colors border-2 border-[#3e2723]">
+                                <BookOpenText size={28} strokeWidth={1.5} />
+                            </div>
+                            <div className="text-center">
+                                <span className="block font-deva font-bold text-stone-800 text-lg">ई-पुस्तकम्</span>
+                                <span className="block text-[10px] font-serif uppercase tracking-widest text-stone-500">Library</span>
+                            </div>
+                       </button>
+
+                       {/* Contribute Button */}
+                       <button 
+                            onClick={() => setIsInfoOpen(true)} 
+                            className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1"
+                       >
+                            <div className="w-16 h-16 bg-[#8c4b38] text-[#fdf8f6] rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:bg-[#763d2d] transition-colors border-2 border-[#5e3024]">
+                                <Feather size={28} strokeWidth={1.5} />
+                            </div>
+                            <div className="text-center">
+                                <span className="block font-deva font-bold text-stone-800 text-lg">योगदानम्</span>
+                                <span className="block text-[10px] font-serif uppercase tracking-widest text-stone-500">Contribute</span>
+                            </div>
+                       </button>
+
+                       {/* Donate Button */}
+                       <button 
+                            onClick={() => setIsInfoOpen(true)} 
+                            className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1"
+                       >
+                            <div className="w-16 h-16 bg-[#d4a373] text-[#3e2723] rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:bg-[#c59263] transition-colors border-2 border-[#b08968]">
+                                <HeartHandshake size={28} strokeWidth={1.5} />
+                            </div>
+                            <div className="text-center">
+                                <span className="block font-deva font-bold text-stone-800 text-lg">दानम्</span>
+                                <span className="block text-[10px] font-serif uppercase tracking-widest text-stone-500">Donate</span>
+                            </div>
+                       </button>
+
+                   </div>
+                   
+                   <div className="flex justify-center gap-8 mt-12 text-[#5d4037] font-semibold text-sm opacity-80">
+                      <button className="flex items-center gap-2 hover:text-[#3e2723] transition-colors"><Facebook size={18}/> Social Media</button>
+                      <button className="flex items-center gap-2 hover:text-[#3e2723] transition-colors"><Youtube size={18}/> YouTube</button>
+                   </div>
+               </div>
+            </div>
+        ) : (
+        /* --- LIBRARY VIEW (Grid) --- */
         <>
-        <header className="h-20 border-b border-stone-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-4 md:px-12">
-           <div className="flex items-center space-x-3">
+        <header className="h-20 border-b border-stone-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-4 md:px-12 gap-4">
+           <div className="flex items-center space-x-3 cursor-pointer hover:opacity-80 shrink-0" onClick={() => setShowLanding(true)}>
              <div className="p-2 bg-ochre-600 rounded-lg text-white">
                 <Library size={24} />
              </div>
              <div>
-               <h1 className="font-serif font-bold text-2xl text-stone-800">SutraLibrary</h1>
+               <h1 className="font-serif font-bold text-2xl text-stone-800 hidden md:block">SutraLibrary</h1>
              </div>
            </div>
-           <div className="flex items-center space-x-4">
-              <button onClick={() => setIsCMSOpen(true)} className="text-stone-400 hover:text-ochre-700 flex items-center gap-1 text-sm font-medium" title="Contributor Access">
-                 <Edit3 size={18} /> <span className="hidden md:inline">Contribute</span>
-              </button>
-              <button onClick={() => setIsBookmarksOpen(true)} className="text-stone-600 hover:text-ochre-700">
+
+           {/* Library Search Bar */}
+           <div className="flex-1 max-w-md mx-auto relative">
+                <input 
+                  type="text" 
+                  placeholder="Filter books..." 
+                  value={libraryQuery}
+                  onChange={(e) => setLibraryQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-stone-100 border-transparent focus:bg-white focus:border-ochre-300 rounded-lg text-sm transition-all outline-none border focus:ring-2 focus:ring-ochre-100"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
+                {libraryQuery && (
+                  <button onClick={() => setLibraryQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
+                    <X size={14} />
+                  </button>
+                )}
+           </div>
+
+           <div className="flex items-center space-x-2 md:space-x-4 shrink-0">
+              <GlobalHeaderButtons />
+              <div className="w-px h-6 bg-stone-300 mx-2 hidden md:block"></div>
+              <button onClick={() => setIsBookmarksOpen(true)} className="text-stone-600 hover:text-ochre-700 transition-colors">
                 <BookmarkIcon size={20} />
-              </button>
-              <button onClick={() => setDarkMode(!darkMode)} className="text-stone-400 hover:text-stone-600">
-                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
               </button>
            </div>
         </header>
 
         <main className="max-w-7xl mx-auto px-4 md:px-12 py-12 flex-1">
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {books.map(book => (
-                <div key={book.id} onClick={() => setSelectedBook(book)} className="group bg-white rounded-xl border border-stone-200 shadow-sm hover:shadow-xl cursor-pointer p-8 flex flex-col">
-                   <span className="text-xs font-bold uppercase tracking-wider text-ochre-600 mb-2">{book.category}</span>
-                   <h3 className="font-serif text-2xl font-bold text-stone-800 mb-2">{book.title}</h3>
-                   <p className="text-stone-400 text-sm mb-4">by {book.author}</p>
-                   <p className="text-stone-600 text-sm mb-6 flex-1">{book.description}</p>
-                   <div className="flex items-center text-ochre-600 font-bold text-sm">Start Reading <ArrowRight size={16} className="ml-2" /></div>
-                </div>
-              ))}
+           <div className="flex justify-between items-center mb-6">
+              <button onClick={() => setShowLanding(true)} className="flex items-center text-sm font-bold text-stone-400 hover:text-ochre-600 uppercase tracking-wider transition-colors">
+                  <ChevronLeft size={16} className="mr-1" /> Back to Home
+              </button>
+              <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">{filteredBooks.length} Books Available</span>
            </div>
+           
+           {filteredBooks.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filteredBooks.map(book => (
+                    <div key={book.id} onClick={() => setSelectedBook(book)} className="group bg-white rounded-xl border border-stone-200 shadow-sm hover:shadow-xl cursor-pointer p-8 flex flex-col transition-all">
+                      <span className="text-xs font-bold uppercase tracking-wider text-ochre-600 mb-2">{book.category}</span>
+                      <h3 className="font-serif text-2xl font-bold text-stone-800 mb-2">{book.title}</h3>
+                      <p className="text-stone-400 text-sm mb-4">by {book.author}</p>
+                      <p className="text-stone-600 text-sm mb-6 flex-1 line-clamp-3">{book.description}</p>
+                      <div className="flex items-center text-ochre-600 font-bold text-sm group-hover:translate-x-1 transition-transform">Start Reading <ArrowRight size={16} className="ml-2" /></div>
+                    </div>
+                  ))}
+              </div>
+           ) : (
+             <div className="text-center py-20 bg-stone-50 rounded-xl border border-stone-100 border-dashed">
+                <BookOpen size={48} className="mx-auto text-stone-300 mb-4" />
+                <h3 className="text-lg font-bold text-stone-600">No books found</h3>
+                <p className="text-stone-400">Try adjusting your search terms.</p>
+                <button onClick={() => setLibraryQuery('')} className="mt-4 text-ochre-600 font-bold text-sm hover:underline">Clear Search</button>
+             </div>
+           )}
         </main>
         </>
+        )
       ) : (
-        /* VIEW: READER */
+        /* --- READER VIEW (Sidebar + Content) --- */
         <div className="flex h-screen overflow-hidden">
           <Sidebar 
             activeBook={selectedBook}
@@ -266,7 +467,7 @@ const App: React.FC = () => {
                     <div className="flex items-center bg-stone-100 rounded-full px-4 py-2 w-full md:w-64">
                        <Search size={16} className="text-stone-400 mr-2" />
                        <input 
-                         type="text" placeholder="Search..." 
+                         type="text" placeholder="Search verse..." 
                          className="bg-transparent border-none outline-none text-sm w-full"
                          value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                        />
@@ -283,11 +484,10 @@ const App: React.FC = () => {
                  </div>
               </div>
               <div className="flex items-center space-x-2">
-                 <button onClick={() => setIsCMSOpen(true)} className="p-2 hover:bg-stone-100 rounded-full text-stone-400 hover:text-ochre-700" title="Contribute">
-                    <Edit3 size={18} />
-                 </button>
-                 <button onClick={() => setIsBookmarksOpen(true)} className="p-2 hover:bg-stone-100 rounded-full"><BookmarkIcon size={20} className="text-stone-500" /></button>
-                 <button onClick={handleShare} className="p-2 hover:bg-stone-100 rounded-full">{copied ? <Check size={20} className="text-green-600" /> : <Share2 size={20} className="text-stone-500" />}</button>
+                 <GlobalHeaderButtons />
+                 <div className="w-px h-6 bg-stone-300 mx-1"></div>
+                 <button onClick={() => setIsBookmarksOpen(true)} className="p-2 hover:bg-stone-100 rounded-full transition-colors"><BookmarkIcon size={20} className="text-stone-500" /></button>
+                 <button onClick={handleShare} className="p-2 hover:bg-stone-100 rounded-full transition-colors">{copied ? <Check size={20} className="text-green-600" /> : <Share2 size={20} className="text-stone-500" />}</button>
               </div>
             </header>
 
@@ -305,9 +505,9 @@ const App: React.FC = () => {
                        
                        {/* Card Header (Nav) */}
                        <div className="flex justify-between items-center text-xs font-bold text-stone-400 uppercase tracking-widest mb-8">
-                          <button onClick={handlePrevVerse} disabled={allVerses[0]?.id === currentVerse.id} className="hover:text-ochre-600 disabled:opacity-20 flex items-center"><ChevronLeft size={16} className="mr-1"/> Prev</button>
+                          <button onClick={handlePrevVerse} disabled={allVerses[0]?.id === currentVerse.id} className="hover:text-ochre-600 disabled:opacity-20 flex items-center transition-colors"><ChevronLeft size={16} className="mr-1"/> Prev</button>
                           <span>{currentVerse.id}</span>
-                          <button onClick={handleNextVerse} disabled={allVerses[allVerses.length-1]?.id === currentVerse.id} className="hover:text-ochre-600 disabled:opacity-20 flex items-center">Next <ChevronRight size={16} className="ml-1"/></button>
+                          <button onClick={handleNextVerse} disabled={allVerses[allVerses.length-1]?.id === currentVerse.id} className="hover:text-ochre-600 disabled:opacity-20 flex items-center transition-colors">Next <ChevronRight size={16} className="ml-1"/></button>
                        </div>
                        
                        {/* Main Verse Content */}

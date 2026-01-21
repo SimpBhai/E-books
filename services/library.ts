@@ -2,7 +2,11 @@ import { Book, Chapter, Verse } from '../types';
 import { BOOKS } from '../data/metadata';
 import { getApprovedOverride } from './cms';
 
-// Metadata is small, so we keep it synchronous
+// Fallback static imports for environments where import.meta.glob is not supported
+// This ensures the app doesn't crash if the build system differs.
+import * as ashtadhyayiData from '../data/ashtadhyayi';
+import * as yogasutraData from '../data/yogasutra';
+
 export const getAvailableBooks = (): Book[] => {
   return BOOKS;
 };
@@ -11,26 +15,51 @@ export const getBookMetadata = (bookId: string): Book | undefined => {
   return BOOKS.find(b => b.id === bookId);
 };
 
-// Content is heavy, so we load it asynchronously (Lazy Loading)
+// Map for fallback manual loading
+const STATIC_DATA_MAP: Record<string, any> = {
+    'ashtadhyayi': ashtadhyayiData,
+    'yogasutra': yogasutraData
+};
+
 export const getBookContent = async (bookId: string): Promise<Chapter[]> => {
   let staticChapters: Chapter[] = [];
   
   try {
-    switch (bookId) {
-      case 'ashtadhyayi': 
-        const m1 = await import('../data/ashtadhyayi');
-        staticChapters = m1.ASHTADHYAYI_DATA; 
-        break;
-      case 'yogasutra': 
-        const m2 = await import('../data/yogasutra');
-        staticChapters = m2.YOGASUTRA_DATA; 
-        break;
-      // As you add 1000 books, you can either add cases here 
-      // OR fetch JSON from a server/CDN to avoid modifying code.
-      default: 
-        console.warn(`Book data for ${bookId} not found locally.`);
-        staticChapters = [];
+    // 1. Try Vite's dynamic glob first (Best for code splitting)
+    // We cast to any to avoid TS errors in environments checking for strict Vite types
+    const globFn = (import.meta as any).glob;
+    let loadedViaGlob = false;
+
+    if (globFn) {
+        try {
+            const dataModules = globFn('../data/*.ts');
+            const filePath = `../data/${bookId}.ts`;
+            const loadModule = dataModules[filePath];
+
+            if (loadModule) {
+                const module: any = await loadModule();
+                const dataExport = Object.values(module).find((exp) => Array.isArray(exp));
+                if (dataExport) {
+                    staticChapters = dataExport as Chapter[];
+                    loadedViaGlob = true;
+                }
+            }
+        } catch (err) {
+            console.warn("Dynamic import failed, switching to fallback", err);
+        }
+    } 
+    
+    // 2. Fallback: If glob didn't work or file not found in glob (but might be in static map)
+    if (!loadedViaGlob && STATIC_DATA_MAP[bookId]) {
+        console.log("Using static fallback for", bookId);
+        const module = STATIC_DATA_MAP[bookId];
+        // Find the exported array in the module
+        const dataExport = Object.values(module).find((exp) => Array.isArray(exp));
+        if (dataExport) {
+            staticChapters = dataExport as Chapter[];
+        }
     }
+    
   } catch (e) {
     console.error(`Failed to load book ${bookId}`, e);
     return [];

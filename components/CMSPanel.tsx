@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Verse, Book, Contribution, ContributorStat, Commentary, ContentText } from '../types';
 import { loginWithKey, submitContribution, getPendingContributions, updateContributionStatus, getContributorStats } from '../services/cms';
 import { getVerseById } from '../services/library';
-import { X, Lock, Check, FileText, Send, LogOut, Shield, BarChart3, BookOpen, PenTool, Search, Languages, Plus, Loader2 } from 'lucide-react';
+import { X, Lock, Check, FileText, Send, LogOut, Shield, BarChart3, PenTool, Search, Plus, Loader2 } from 'lucide-react';
 
 interface CMSPanelProps {
   isOpen: boolean;
