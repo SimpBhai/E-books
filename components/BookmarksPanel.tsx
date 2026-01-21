@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bookmark, Verse, Book } from '../types';
-import { X, Bookmark as BookmarkIcon, Trash2, ArrowRight } from 'lucide-react';
+import { X, Bookmark as BookmarkIcon, Trash2, ArrowRight, Loader2 } from 'lucide-react';
+import { getVerseById, getBookMetadata } from '../services/library';
 
 interface BookmarksPanelProps {
   bookmarks: Bookmark[];
@@ -8,8 +9,6 @@ interface BookmarksPanelProps {
   onClose: () => void;
   onSelectBookmark: (bookId: string, verseId: string) => void;
   onRemoveBookmark: (bookId: string, verseId: string) => void;
-  getBookDetails: (bookId: string) => Book | undefined;
-  getVerseDetails: (bookId: string, verseId: string) => Verse | undefined;
 }
 
 const BookmarksPanel: React.FC<BookmarksPanelProps> = ({
@@ -18,9 +17,29 @@ const BookmarksPanel: React.FC<BookmarksPanelProps> = ({
   onClose,
   onSelectBookmark,
   onRemoveBookmark,
-  getBookDetails,
-  getVerseDetails
 }) => {
+  const [hydratedBookmarks, setHydratedBookmarks] = useState<{bm: Bookmark, verse: Verse | undefined, book: Book | undefined}[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && bookmarks.length > 0) {
+      setLoading(true);
+      const fetchDetails = async () => {
+        const promises = bookmarks.map(async (bm) => {
+            const book = getBookMetadata(bm.bookId);
+            const verse = await getVerseById(bm.bookId, bm.verseId);
+            return { bm, verse, book };
+        });
+        const results = await Promise.all(promises);
+        // Sort by timestamp desc
+        results.sort((a,b) => b.bm.timestamp - a.bm.timestamp);
+        setHydratedBookmarks(results);
+        setLoading(false);
+      };
+      fetchDetails();
+    }
+  }, [isOpen, bookmarks]);
+
   if (!isOpen) return null;
 
   return (
@@ -43,11 +62,13 @@ const BookmarksPanel: React.FC<BookmarksPanelProps> = ({
                    <BookmarkIcon className="w-12 h-12 mb-3 opacity-20" />
                    <p>No bookmarks yet.</p>
                 </div>
+             ) : loading ? (
+                 <div className="flex flex-col items-center justify-center h-64 text-stone-400">
+                    <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                    <p className="text-xs">Loading saved verses...</p>
+                 </div>
              ) : (
-                bookmarks.sort((a,b) => b.timestamp - a.timestamp).map((bm) => {
-                   const book = getBookDetails(bm.bookId);
-                   const verse = getVerseDetails(bm.bookId, bm.verseId);
-                   
+                hydratedBookmarks.map(({ bm, verse, book }) => {
                    if (!book || !verse) return null;
 
                    return (

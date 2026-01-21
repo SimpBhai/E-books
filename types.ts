@@ -57,3 +57,37 @@ export interface Bookmark {
   verseId: string;
   timestamp: number;
 }
+
+// --- CMS Types ---
+
+export type UserRole = 'admin' | 'contributor' | null;
+
+export interface User {
+  role: UserRole;
+  name: string;
+}
+
+export interface Contribution {
+  id: string;
+  timestamp: number;
+  contributorName: string;
+  status: 'pending' | 'approved' | 'rejected';
+  type: 'verse' | 'commentary' | 'translation'; // Added 'translation'
+  
+  // Target
+  bookId: string;
+  chapterId: number;
+  sectionId: number; // or Pada
+  verseNumber: number;
+  verseId: string; // "1.1.1"
+  
+  // Data
+  content: Verse;
+}
+
+export interface ContributorStat {
+  name: string;
+  pending: number;
+  approved: number;
+  rejected: number;
+}
