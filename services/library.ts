@@ -3,7 +3,6 @@ import { BOOKS } from '../data/metadata';
 import { getApprovedOverride } from './cms';
 
 // Fallback static imports for environments where import.meta.glob is not supported
-// This ensures the app doesn't crash if the build system differs.
 import * as ashtadhyayiData from '../data/ashtadhyayi';
 import * as yogasutraData from '../data/yogasutra';
 
@@ -25,13 +24,13 @@ export const getBookContent = async (bookId: string): Promise<Chapter[]> => {
   let staticChapters: Chapter[] = [];
   
   try {
-    // 1. Try Vite's dynamic glob first (Best for code splitting)
-    // We cast to any to avoid TS errors in environments checking for strict Vite types
-    const globFn = (import.meta as any).glob;
     let loadedViaGlob = false;
 
-    if (globFn) {
-        try {
+    // Use try-catch for glob access to prevent syntax errors in non-Vite environments crashing the script
+    try {
+        // @ts-ignore
+        const globFn = import.meta.glob;
+        if (globFn) {
             const dataModules = globFn('../data/*.ts');
             const filePath = `../data/${bookId}.ts`;
             const loadModule = dataModules[filePath];
@@ -44,12 +43,12 @@ export const getBookContent = async (bookId: string): Promise<Chapter[]> => {
                     loadedViaGlob = true;
                 }
             }
-        } catch (err) {
-            console.warn("Dynamic import failed, switching to fallback", err);
         }
-    } 
+    } catch (e) {
+        // Ignore glob errors and fall back to static
+    }
     
-    // 2. Fallback: If glob didn't work or file not found in glob (but might be in static map)
+    // 2. Fallback: If glob didn't work or file not found in glob
     if (!loadedViaGlob && STATIC_DATA_MAP[bookId]) {
         console.log("Using static fallback for", bookId);
         const module = STATIC_DATA_MAP[bookId];

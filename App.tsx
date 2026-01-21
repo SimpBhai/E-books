@@ -9,8 +9,30 @@ import InfoModal from './components/InfoModal';
 import { Menu, Search, Moon, Sun, ChevronLeft, ChevronRight, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, Filter, BookOpen, Globe, Loader2, Facebook, Youtube, Heart, CircleHelp, BookOpenText, Feather, HeartHandshake, X } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// REPLACE THIS URL WITH YOUR UPLOADED IMAGE URL
-const LANDING_BG_IMAGE = "https://images.unsplash.com/photo-1603217277800-4497e0eb7e3e?q=80&w=2600&auto=format&fit=crop"; // Placeholder Fire/Om background
+const LANDING_BG_IMAGE = "https://images.unsplash.com/photo-1603217277800-4497e0eb7e3e?q=80&w=2600&auto=format&fit=crop";
+
+// --- SUB-COMPONENTS ---
+
+interface GlobalHeaderButtonsProps {
+  theme: 'light' | 'dark';
+  darkMode: boolean;
+  setDarkMode: (value: boolean) => void;
+  onOpenInfo: () => void;
+}
+
+const GlobalHeaderButtons: React.FC<GlobalHeaderButtonsProps> = ({ theme, darkMode, setDarkMode, onOpenInfo }) => (
+  <div className={`flex items-center space-x-1 md:space-x-2`}>
+     <button onClick={onOpenInfo} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-red-400' : 'text-stone-500 hover:bg-stone-100 hover:text-red-500'}`} title="Donate">
+        <Heart size={20} />
+     </button>
+     <button onClick={onOpenInfo} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-blue-400' : 'text-stone-500 hover:bg-stone-100 hover:text-blue-600'}`} title="About & Contribute">
+        <CircleHelp size={20} />
+     </button>
+     <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-800'}`}>
+        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+     </button>
+  </div>
+);
 
 const App: React.FC = () => {
   // Navigation State
@@ -19,10 +41,10 @@ const App: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoadingBook, setIsLoadingBook] = useState(false);
   
-  // Library Search State (For finding books)
+  // Library Search State
   const [libraryQuery, setLibraryQuery] = useState('');
 
-  // Reader Search State (For finding verses)
+  // Reader Search State
   const [searchQuery, setSearchQuery] = useState('');
 
   // Reader State
@@ -38,8 +60,8 @@ const App: React.FC = () => {
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
-  const [isCMSOpen, setIsCMSOpen] = useState(false); // CMS State
-  const [isInfoOpen, setIsInfoOpen] = useState(false); // Info Modal State
+  const [isCMSOpen, setIsCMSOpen] = useState(false);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   
   const [darkMode, setDarkMode] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -71,7 +93,6 @@ const App: React.FC = () => {
     const loadBook = async () => {
       if (selectedBook) {
         setIsLoadingBook(true);
-        // Clear previous context to avoid stale data display
         if (isMounted) {
             setChapters([]);
             setAllVerses([]);
@@ -85,10 +106,7 @@ const App: React.FC = () => {
             setChapters(bookChapters);
             setAllVerses(bookVerses);
             
-            // Check if we need to set a default verse
-            // Logic: If currentVerse is null OR the currentVerse doesn't belong to the new book (simple ID check)
             const verseExists = currentVerse && bookVerses.some(v => v.id === currentVerse.id);
-            
             if (bookVerses.length > 0) {
                  if (!currentVerse || !verseExists) {
                      setCurrentVerse(bookVerses[0]);
@@ -116,7 +134,6 @@ const App: React.FC = () => {
   // Reset View selections when verse changes
   useEffect(() => {
     if (currentVerse) {
-      // Default Bhasya (Commentary)
       if (currentVerse.commentaries && currentVerse.commentaries.length > 0) {
         setSelectedBhasyaIds([currentVerse.commentaries[0].id]);
       } else {
@@ -141,11 +158,8 @@ const App: React.FC = () => {
   const handleBookmarkNavigation = async (bookId: string, verseId: string) => {
     const book = getBookMetadata(bookId);
     if (book) {
-      setShowLanding(false); // Ensure we leave landing page
-      // 1. Set book (triggers loading effect)
+      setShowLanding(false);
       setSelectedBook(book);
-      
-      // 2. Fetch specific verse asynchronously (might be faster than full load)
       const targetVerse = await getVerseById(bookId, verseId);
       if (targetVerse) {
         setCurrentVerse(targetVerse);
@@ -202,52 +216,28 @@ const App: React.FC = () => {
     ? allVerses.filter(v => v.sanskrit.includes(searchQuery) || v.id.includes(searchQuery))
     : [];
 
-  // Helper to get active content
   const getActiveContent = (items: ContentText[] | undefined, preferredLang: string) => {
     if (!items || items.length === 0) return null;
     const availableLangs = Array.from(new Set(items.map(i => i.language)));
-    
-    // Priority: Preferred Language -> First Available
     let activeItem = items.find(i => i.language === preferredLang);
     if (!activeItem && availableLangs.length > 0) {
       activeItem = items[0];
     }
-    
     return { activeItem, availableLangs };
   };
 
-  // Helper to check if text is Devanagari (Hindi/Sanskrit) for font selection
   const isDevanagari = (lang: string) => {
     return lang === 'Hindi' || lang === 'Sanskrit';
   };
 
-  // Reader Content Preparation
   const sutrarthData = currentVerse ? getActiveContent(currentVerse.sutrarth, contentLang) : null;
   const bhavarthData = currentVerse ? getActiveContent(currentVerse.summary, contentLang) : null;
 
-  // Derive all available languages
   const availableLanguages = currentVerse ? Array.from(new Set([
     ...(currentVerse.sutrarth?.map(s => s.language) || []),
     ...(currentVerse.summary?.map(s => s.language) || [])
   ])).sort() : [];
 
-  // --- GLOBAL HEADER BUTTONS COMPONENT ---
-  const GlobalHeaderButtons = ({ theme }: { theme: 'light' | 'dark' }) => (
-    <div className={`flex items-center space-x-1 md:space-x-2`}>
-       <button onClick={() => setIsInfoOpen(true)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-red-400' : 'text-stone-500 hover:bg-stone-100 hover:text-red-500'}`} title="Donate">
-          <Heart size={20} />
-       </button>
-       <button onClick={() => setIsInfoOpen(true)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-blue-400' : 'text-stone-500 hover:bg-stone-100 hover:text-blue-600'}`} title="About & Contribute">
-          <CircleHelp size={20} />
-       </button>
-       <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-800'}`}>
-          {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-       </button>
-    </div>
-  );
-
-  // --- RENDER ---
-  
   return (
     <div className={`min-h-screen w-full flex flex-col ${darkMode ? 'dark bg-stone-900 text-stone-100' : 'bg-stone-50 text-stone-900'}`}>
       
@@ -266,27 +256,19 @@ const App: React.FC = () => {
       {/* VIEW SELECTION */}
       {!selectedBook ? (
         showLanding ? (
-            /* --- LANDING PAGE (Sanatani Akhada Style) --- */
+            /* --- LANDING PAGE --- */
             <div className="min-h-screen bg-stone-900 flex flex-col items-center relative overflow-hidden font-sans">
                 
-                {/* Background Image Layer */}
                 <div className="absolute inset-0 z-0">
-                    <img 
-                        src={LANDING_BG_IMAGE} 
-                        alt="Background" 
-                        className="w-full h-full object-cover opacity-60"
-                    />
-                    {/* Gradient Overlay for Text Readability */}
+                    <img src={LANDING_BG_IMAGE} alt="Background" className="w-full h-full object-cover opacity-60" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/20"></div>
                     <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent h-40"></div>
                 </div>
 
-                {/* Top Actions */}
                 <div className="absolute top-4 right-4 z-20 flex gap-2">
-                     <GlobalHeaderButtons theme="dark" />
+                     <GlobalHeaderButtons theme="dark" darkMode={darkMode} setDarkMode={setDarkMode} onOpenInfo={() => setIsInfoOpen(true)} />
                 </div>
 
-                {/* Top Search Bar (Transparent) */}
                 <div className="w-full p-4 flex justify-center items-center z-10 pt-8 sm:pt-12">
                   <form onSubmit={handleHomeSearch} className="w-full max-w-lg relative">
                       <input 
@@ -303,10 +285,7 @@ const App: React.FC = () => {
                   </form>
                </div>
 
-               {/* Main Center Content */}
                <div className="flex-1 flex flex-col items-center justify-center w-full max-w-4xl px-4 py-6 z-10 text-center relative">
-                  
-                  {/* Glowing Effect Behind Text */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-600/20 blur-[120px] rounded-full pointer-events-none"></div>
 
                   <h1 className="text-5xl md:text-7xl font-deva font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-200 mb-6 drop-shadow-[0_2px_10px_rgba(255,200,0,0.3)] tracking-wide">
@@ -322,18 +301,11 @@ const App: React.FC = () => {
                   
                   <p className="text-stone-300 font-serif tracking-[0.2em] text-sm uppercase">A project by</p>
                   <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 font-serif tracking-wide">Sanatani Akhada</h3>
-
                </div>
 
-               {/* Action Buttons (Glassmorphic Small Icons) */}
                <div className="w-full max-w-4xl px-6 pb-12 z-10 mt-4">
                    <div className="flex justify-center gap-8 md:gap-16">
-                       
-                       {/* E-pustakam Button */}
-                       <button 
-                            onClick={() => setShowLanding(false)} 
-                            className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1"
-                       >
+                       <button onClick={() => setShowLanding(false)} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-yellow-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,200,0,0.2)] transition-all border border-white/20">
                                 <BookOpenText size={24} strokeWidth={1.5} />
                             </div>
@@ -343,11 +315,7 @@ const App: React.FC = () => {
                             </div>
                        </button>
 
-                       {/* Contribute Button */}
-                       <button 
-                            onClick={() => setIsInfoOpen(true)} 
-                            className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1"
-                       >
+                       <button onClick={() => setIsInfoOpen(true)} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-red-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,100,100,0.2)] transition-all border border-white/20">
                                 <Feather size={24} strokeWidth={1.5} />
                             </div>
@@ -357,11 +325,7 @@ const App: React.FC = () => {
                             </div>
                        </button>
 
-                       {/* Donate Button */}
-                       <button 
-                            onClick={() => setIsInfoOpen(true)} 
-                            className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1"
-                       >
+                       <button onClick={() => setIsInfoOpen(true)} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-orange-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,165,0,0.2)] transition-all border border-white/20">
                                 <HeartHandshake size={24} strokeWidth={1.5} />
                             </div>
@@ -370,7 +334,6 @@ const App: React.FC = () => {
                                 <span className="block text-[10px] font-serif uppercase tracking-widest text-white/50">Donate</span>
                             </div>
                        </button>
-
                    </div>
                    
                    <div className="flex justify-center gap-8 mt-12 text-white/50 font-semibold text-sm">
@@ -380,7 +343,7 @@ const App: React.FC = () => {
                </div>
             </div>
         ) : (
-        /* --- LIBRARY VIEW (Grid) --- */
+        /* --- LIBRARY VIEW --- */
         <>
         <header className="h-20 border-b border-stone-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-4 md:px-12 gap-4">
            <div className="flex items-center space-x-3 cursor-pointer hover:opacity-80 shrink-0" onClick={() => setShowLanding(true)}>
@@ -392,7 +355,6 @@ const App: React.FC = () => {
              </div>
            </div>
 
-           {/* Library Search Bar */}
            <div className="flex-1 max-w-md mx-auto relative">
                 <input 
                   type="text" 
@@ -410,7 +372,7 @@ const App: React.FC = () => {
            </div>
 
            <div className="flex items-center space-x-2 md:space-x-4 shrink-0">
-              <GlobalHeaderButtons theme="light" />
+              <GlobalHeaderButtons theme="light" darkMode={darkMode} setDarkMode={setDarkMode} onOpenInfo={() => setIsInfoOpen(true)} />
               <div className="w-px h-6 bg-stone-300 mx-2 hidden md:block"></div>
               <button onClick={() => setIsBookmarksOpen(true)} className="text-stone-600 hover:text-ochre-700 transition-colors">
                 <BookmarkIcon size={20} />
@@ -450,7 +412,7 @@ const App: React.FC = () => {
         </>
         )
       ) : (
-        /* --- READER VIEW (Sidebar + Content) --- */
+        /* --- READER VIEW --- */
         <div className="flex h-screen overflow-hidden">
           <Sidebar 
             activeBook={selectedBook}
@@ -487,7 +449,7 @@ const App: React.FC = () => {
                  </div>
               </div>
               <div className="flex items-center space-x-2">
-                 <GlobalHeaderButtons theme="light" />
+                 <GlobalHeaderButtons theme="light" darkMode={darkMode} setDarkMode={setDarkMode} onOpenInfo={() => setIsInfoOpen(true)} />
                  <div className="w-px h-6 bg-stone-300 mx-1"></div>
                  <button onClick={() => setIsBookmarksOpen(true)} className="p-2 hover:bg-stone-100 rounded-full transition-colors"><BookmarkIcon size={20} className="text-stone-500" /></button>
                  <button onClick={handleShare} className="p-2 hover:bg-stone-100 rounded-full transition-colors">{copied ? <Check size={20} className="text-green-600" /> : <Share2 size={20} className="text-stone-500" />}</button>
@@ -503,17 +465,13 @@ const App: React.FC = () => {
               <div className="flex-1 overflow-y-auto bg-stone-50 scroll-smooth">
                  <div className="max-w-4xl mx-auto px-6 py-12 pb-24">
                     
-                    {/* Unified Main Card */}
                     <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-8 md:p-12 mb-8 relative">
-                       
-                       {/* Card Header (Nav) */}
                        <div className="flex justify-between items-center text-xs font-bold text-stone-400 uppercase tracking-widest mb-8">
                           <button onClick={handlePrevVerse} disabled={allVerses[0]?.id === currentVerse.id} className="hover:text-ochre-600 disabled:opacity-20 flex items-center transition-colors"><ChevronLeft size={16} className="mr-1"/> Prev</button>
                           <span>{currentVerse.id}</span>
                           <button onClick={handleNextVerse} disabled={allVerses[allVerses.length-1]?.id === currentVerse.id} className="hover:text-ochre-600 disabled:opacity-20 flex items-center transition-colors">Next <ChevronRight size={16} className="ml-1"/></button>
                        </div>
                        
-                       {/* Main Verse Content */}
                        <div className="text-center mb-8">
                          <h1 className="font-deva text-4xl md:text-6xl text-stone-800 mb-6 leading-relaxed">{currentVerse.sanskrit}</h1>
                          <p className="font-serif text-xl text-stone-500 italic mb-6">{currentVerse.transliteration}</p>
@@ -528,7 +486,6 @@ const App: React.FC = () => {
                             </button>
                          </div>
 
-                         {/* UNIFIED LANGUAGE TOGGLE */}
                          {availableLanguages.length > 1 && (
                            <div className="flex justify-center animate-in fade-in slide-in-from-bottom-2 duration-300">
                               <div className="bg-stone-100 p-1 rounded-lg inline-flex shadow-inner">
@@ -546,7 +503,6 @@ const App: React.FC = () => {
                          )}
                        </div>
 
-                       {/* Sutrarth (Literal Meaning) Section */}
                        {sutrarthData && sutrarthData.activeItem && (
                           <div className="mt-10 pt-8 border-t border-stone-100">
                              <div className="flex items-center justify-between mb-6">
@@ -565,7 +521,6 @@ const App: React.FC = () => {
                           </div>
                        )}
 
-                       {/* Bhavarth (Summary) Section */}
                        {bhavarthData && bhavarthData.activeItem && (
                           <div className="mt-10 pt-8 border-t border-stone-100">
                              <div className="flex items-center justify-between mb-6">
@@ -585,7 +540,6 @@ const App: React.FC = () => {
                        )}
                     </div>
 
-                    {/* Bhasya (Commentary) - Outside Card */}
                     {currentVerse.commentaries && currentVerse.commentaries.length > 0 && (
                       <div>
                          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 px-2">
@@ -619,7 +573,6 @@ const App: React.FC = () => {
                          </div>
                       </div>
                     )}
-
                  </div>
               </div>
             ) : (
