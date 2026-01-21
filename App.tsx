@@ -8,6 +8,10 @@ import CMSPanel from './components/CMSPanel';
 import InfoModal from './components/InfoModal';
 import { Menu, Search, Moon, Sun, ChevronLeft, ChevronRight, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, Filter, BookOpen, Globe, Loader2, Facebook, Youtube, Heart, CircleHelp, BookOpenText, Feather, HeartHandshake, X } from 'lucide-react';
 
+// --- CONFIGURATION ---
+// REPLACE THIS URL WITH YOUR UPLOADED IMAGE URL
+const LANDING_BG_IMAGE = "https://images.unsplash.com/photo-1603217277800-4497e0eb7e3e?q=80&w=2600&auto=format&fit=crop"; // Placeholder Fire/Om background
+
 const App: React.FC = () => {
   // Navigation State
   const [showLanding, setShowLanding] = useState(true);
@@ -228,15 +232,15 @@ const App: React.FC = () => {
   ])).sort() : [];
 
   // --- GLOBAL HEADER BUTTONS COMPONENT ---
-  const GlobalHeaderButtons = () => (
-    <div className="flex items-center space-x-1 md:space-x-2">
-       <button onClick={() => setIsInfoOpen(true)} className="p-2 hover:bg-stone-100 rounded-full text-stone-500 hover:text-red-500 transition-colors" title="Donate">
+  const GlobalHeaderButtons = ({ theme }: { theme: 'light' | 'dark' }) => (
+    <div className={`flex items-center space-x-1 md:space-x-2`}>
+       <button onClick={() => setIsInfoOpen(true)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-red-400' : 'text-stone-500 hover:bg-stone-100 hover:text-red-500'}`} title="Donate">
           <Heart size={20} />
        </button>
-       <button onClick={() => setIsInfoOpen(true)} className="p-2 hover:bg-stone-100 rounded-full text-stone-500 hover:text-blue-600 transition-colors" title="About & Contribute">
+       <button onClick={() => setIsInfoOpen(true)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-blue-400' : 'text-stone-500 hover:bg-stone-100 hover:text-blue-600'}`} title="About & Contribute">
           <CircleHelp size={20} />
        </button>
-       <button onClick={() => setDarkMode(!darkMode)} className="p-2 hover:bg-stone-100 rounded-full text-stone-500 hover:text-stone-800 transition-colors">
+       <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-800'}`}>
           {darkMode ? <Sun size={20} /> : <Moon size={20} />}
        </button>
     </div>
@@ -262,68 +266,67 @@ const App: React.FC = () => {
       {/* VIEW SELECTION */}
       {!selectedBook ? (
         showLanding ? (
-            /* --- LANDING PAGE (Ashtadhyayi Style) --- */
-            <div className="min-h-screen bg-[#fdf8f0] flex flex-col items-center relative overflow-hidden font-sans">
-                {/* Top Actions */}
-                <div className="absolute top-4 right-4 z-20 flex gap-2">
-                     <GlobalHeaderButtons />
+            /* --- LANDING PAGE (Sanatani Akhada Style) --- */
+            <div className="min-h-screen bg-stone-900 flex flex-col items-center relative overflow-hidden font-sans">
+                
+                {/* Background Image Layer */}
+                <div className="absolute inset-0 z-0">
+                    <img 
+                        src={LANDING_BG_IMAGE} 
+                        alt="Background" 
+                        className="w-full h-full object-cover opacity-60"
+                    />
+                    {/* Gradient Overlay for Text Readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/20"></div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent h-40"></div>
                 </div>
 
-                {/* Top Search Bar */}
+                {/* Top Actions */}
+                <div className="absolute top-4 right-4 z-20 flex gap-2">
+                     <GlobalHeaderButtons theme="dark" />
+                </div>
+
+                {/* Top Search Bar (Transparent) */}
                 <div className="w-full p-4 flex justify-center items-center z-10 pt-8 sm:pt-12">
-                  <form onSubmit={handleHomeSearch} className="w-full max-w-lg relative drop-shadow-md">
+                  <form onSubmit={handleHomeSearch} className="w-full max-w-lg relative">
                       <input 
                         type="text" 
                         placeholder="Search Library..."
                         value={libraryQuery}
                         onChange={(e) => setLibraryQuery(e.target.value)}
-                        className="w-full py-3 pl-12 pr-4 rounded bg-white border border-stone-300 focus:outline-none focus:ring-2 focus:ring-ochre-800 text-stone-700 placeholder-stone-400 shadow-sm"
+                        className="w-full py-3 pl-12 pr-4 rounded-full bg-white/10 backdrop-blur-md border border-white/20 focus:outline-none focus:ring-2 focus:ring-ochre-500 text-white placeholder-white/50 shadow-lg transition-all"
                       />
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
-                      <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-stone-100 rounded hover:bg-stone-200 transition-colors">
-                          <ArrowRight size={16} className="text-stone-600" />
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={20} />
+                      <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+                          <ArrowRight size={16} className="text-white" />
                       </button>
                   </form>
                </div>
 
-               {/* Main Scroll Content */}
-               <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl px-4 py-6">
-                  <h1 className="text-3xl md:text-4xl font-deva font-bold text-stone-900 mb-8 drop-shadow-sm">|| तस्मै पाणिनये नमः ||</h1>
+               {/* Main Center Content */}
+               <div className="flex-1 flex flex-col items-center justify-center w-full max-w-4xl px-4 py-6 z-10 text-center relative">
                   
-                  {/* The Scroll Graphic */}
-                  <div className="relative w-full max-w-lg mx-auto">
-                     {/* Top Handle */}
-                     <div className="h-8 w-[108%] -ml-[4%] bg-gradient-to-r from-[#3e2723] via-[#5d4037] to-[#3e2723] rounded-full shadow-lg relative z-20 flex items-center justify-between px-2">
-                        <div className="w-5 h-5 bg-[#271916] rounded-full opacity-60"></div>
-                        <div className="w-5 h-5 bg-[#271916] rounded-full opacity-60"></div>
-                     </div>
-                     
-                     {/* Paper Body */}
-                     <div className="bg-[#f7ebd4] shadow-2xl px-6 py-10 md:py-16 text-center relative z-10 mx-auto w-[96%] border-x-2 border-[#e6d6b6]">
-                        {/* Inner Shadow Gradient */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/10 pointer-events-none"></div>
-                        
-                        <div className="space-y-6 text-[#3e2723] font-deva text-lg md:text-xl leading-relaxed font-medium relative z-10">
-                           <p>येनाक्षरसमाम्नायमधिगम्य महेश्वरात् ।<br/>कृत्स्नं व्याकरणं प्रोक्तं तस्मै पाणिनये नमः ॥</p>
-                           <p>येन धौता गिरः पुंसां विमलैः शब्दवारिभिः ।<br/>तमश्चाज्ञानजं भिन्नं तस्मै पाणिनये नमः ॥</p>
-                           <p>अज्ञानान्धस्य लोकस्य ज्ञानाञ्जनशलाकया ।<br/>चक्षुरुन्मीलितं येन तस्मै पाणिनये नमः ॥</p>
-                           <div className="w-16 h-0.5 bg-[#3e2723]/20 mx-auto my-4"></div>
-                           <p className="text-base md:text-lg">
-                              वाक्यकारं वररुचिं भाष्यकारं पतञ्जलिम् ।<br/>पाणिनिं सूत्रकारं च प्रणतोऽस्मि मुनित्रयम् ॥
-                           </p>
-                        </div>
-                     </div>
+                  {/* Glowing Effect Behind Text */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-600/20 blur-[120px] rounded-full pointer-events-none"></div>
 
-                     {/* Bottom Handle */}
-                     <div className="h-8 w-[108%] -ml-[4%] bg-gradient-to-r from-[#3e2723] via-[#5d4037] to-[#3e2723] rounded-full shadow-lg relative z-20 flex items-center justify-between px-2 -mt-1">
-                        <div className="w-5 h-5 bg-[#271916] rounded-full opacity-60"></div>
-                        <div className="w-5 h-5 bg-[#271916] rounded-full opacity-60"></div>
-                     </div>
+                  <h1 className="text-5xl md:text-7xl font-deva font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-200 mb-6 drop-shadow-[0_2px_10px_rgba(255,200,0,0.3)] tracking-wide">
+                    • सत्यप्रतिष्ठा •
+                  </h1>
+                  
+                  <div className="space-y-4 text-white/90 font-deva text-xl md:text-3xl font-medium leading-relaxed drop-shadow-md">
+                     <p>सत्ये प्रतिष्ठिता धर्ममार्गः।</p>
+                     <p>सत्यस्य स्थापना एव धर्मः।</p>
                   </div>
+                  
+                  <div className="w-24 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent mt-8 mb-8 opacity-80"></div>
+                  
+                  <p className="text-stone-300 font-serif tracking-[0.2em] text-sm uppercase">A project by</p>
+                  <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 font-serif tracking-wide">Sanatani Akhada</h3>
+
                </div>
 
-               {/* Action Buttons (Small Icons) */}
-               <div className="w-full max-w-4xl px-6 pb-12 z-10 mt-8">
+               {/* Action Buttons (Glassmorphic Small Icons) */}
+               <div className="w-full max-w-4xl px-6 pb-12 z-10 mt-4">
                    <div className="flex justify-center gap-8 md:gap-16">
                        
                        {/* E-pustakam Button */}
@@ -331,12 +334,12 @@ const App: React.FC = () => {
                             onClick={() => setShowLanding(false)} 
                             className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1"
                        >
-                            <div className="w-16 h-16 bg-[#5d4037] text-[#f5e6ca] rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:bg-[#4e342e] transition-colors border-2 border-[#3e2723]">
-                                <BookOpenText size={28} strokeWidth={1.5} />
+                            <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-yellow-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,200,0,0.2)] transition-all border border-white/20">
+                                <BookOpenText size={24} strokeWidth={1.5} />
                             </div>
                             <div className="text-center">
-                                <span className="block font-deva font-bold text-stone-800 text-lg">ई-पुस्तकम्</span>
-                                <span className="block text-[10px] font-serif uppercase tracking-widest text-stone-500">Library</span>
+                                <span className="block font-deva font-bold text-white text-base">ई-पुस्तकम्</span>
+                                <span className="block text-[10px] font-serif uppercase tracking-widest text-white/50">Library</span>
                             </div>
                        </button>
 
@@ -345,12 +348,12 @@ const App: React.FC = () => {
                             onClick={() => setIsInfoOpen(true)} 
                             className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1"
                        >
-                            <div className="w-16 h-16 bg-[#8c4b38] text-[#fdf8f6] rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:bg-[#763d2d] transition-colors border-2 border-[#5e3024]">
-                                <Feather size={28} strokeWidth={1.5} />
+                            <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-red-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,100,100,0.2)] transition-all border border-white/20">
+                                <Feather size={24} strokeWidth={1.5} />
                             </div>
                             <div className="text-center">
-                                <span className="block font-deva font-bold text-stone-800 text-lg">योगदानम्</span>
-                                <span className="block text-[10px] font-serif uppercase tracking-widest text-stone-500">Contribute</span>
+                                <span className="block font-deva font-bold text-white text-base">योगदानम्</span>
+                                <span className="block text-[10px] font-serif uppercase tracking-widest text-white/50">Contribute</span>
                             </div>
                        </button>
 
@@ -359,20 +362,20 @@ const App: React.FC = () => {
                             onClick={() => setIsInfoOpen(true)} 
                             className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1"
                        >
-                            <div className="w-16 h-16 bg-[#d4a373] text-[#3e2723] rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:bg-[#c59263] transition-colors border-2 border-[#b08968]">
-                                <HeartHandshake size={28} strokeWidth={1.5} />
+                            <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-orange-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,165,0,0.2)] transition-all border border-white/20">
+                                <HeartHandshake size={24} strokeWidth={1.5} />
                             </div>
                             <div className="text-center">
-                                <span className="block font-deva font-bold text-stone-800 text-lg">दानम्</span>
-                                <span className="block text-[10px] font-serif uppercase tracking-widest text-stone-500">Donate</span>
+                                <span className="block font-deva font-bold text-white text-base">दानम्</span>
+                                <span className="block text-[10px] font-serif uppercase tracking-widest text-white/50">Donate</span>
                             </div>
                        </button>
 
                    </div>
                    
-                   <div className="flex justify-center gap-8 mt-12 text-[#5d4037] font-semibold text-sm opacity-80">
-                      <button className="flex items-center gap-2 hover:text-[#3e2723] transition-colors"><Facebook size={18}/> Social Media</button>
-                      <button className="flex items-center gap-2 hover:text-[#3e2723] transition-colors"><Youtube size={18}/> YouTube</button>
+                   <div className="flex justify-center gap-8 mt-12 text-white/50 font-semibold text-sm">
+                      <button className="flex items-center gap-2 hover:text-white transition-colors"><Facebook size={18}/> Social Media</button>
+                      <button className="flex items-center gap-2 hover:text-white transition-colors"><Youtube size={18}/> YouTube</button>
                    </div>
                </div>
             </div>
@@ -407,7 +410,7 @@ const App: React.FC = () => {
            </div>
 
            <div className="flex items-center space-x-2 md:space-x-4 shrink-0">
-              <GlobalHeaderButtons />
+              <GlobalHeaderButtons theme="light" />
               <div className="w-px h-6 bg-stone-300 mx-2 hidden md:block"></div>
               <button onClick={() => setIsBookmarksOpen(true)} className="text-stone-600 hover:text-ochre-700 transition-colors">
                 <BookmarkIcon size={20} />
@@ -484,7 +487,7 @@ const App: React.FC = () => {
                  </div>
               </div>
               <div className="flex items-center space-x-2">
-                 <GlobalHeaderButtons />
+                 <GlobalHeaderButtons theme="light" />
                  <div className="w-px h-6 bg-stone-300 mx-1"></div>
                  <button onClick={() => setIsBookmarksOpen(true)} className="p-2 hover:bg-stone-100 rounded-full transition-colors"><BookmarkIcon size={20} className="text-stone-500" /></button>
                  <button onClick={handleShare} className="p-2 hover:bg-stone-100 rounded-full transition-colors">{copied ? <Check size={20} className="text-green-600" /> : <Share2 size={20} className="text-stone-500" />}</button>
