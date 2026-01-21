@@ -6,26 +6,31 @@ import BookmarksPanel from './components/BookmarksPanel';
 import CommentaryCard from './components/CommentaryCard';
 import CMSPanel from './components/CMSPanel';
 import InfoModal from './components/InfoModal';
-import { Menu, Search, Moon, Sun, ChevronLeft, ChevronRight, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, Filter, BookOpen, Globe, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X } from 'lucide-react';
+import DonatePage from './components/DonatePage';
+import ContributePage from './components/ContributePage';
+import ProjectsPage from './components/ProjectsPage';
+import { Menu, Search, Moon, Sun, ChevronLeft, ChevronRight, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, Filter, BookOpen, Globe, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid } from 'lucide-react';
 
 // --- CONFIGURATION ---
 const LANDING_BG_IMAGE = "https://images.unsplash.com/photo-1603217277800-4497e0eb7e3e?q=80&w=2600&auto=format&fit=crop";
 
 // --- SUB-COMPONENTS ---
 
+type ViewState = 'landing' | 'library' | 'donate' | 'contribute' | 'projects';
+
 interface GlobalHeaderButtonsProps {
   theme: 'light' | 'dark';
   darkMode: boolean;
   setDarkMode: (value: boolean) => void;
-  onOpenInfo: () => void;
+  onNavigate: (view: ViewState) => void;
 }
 
-const GlobalHeaderButtons: React.FC<GlobalHeaderButtonsProps> = ({ theme, darkMode, setDarkMode, onOpenInfo }) => (
+const GlobalHeaderButtons: React.FC<GlobalHeaderButtonsProps> = ({ theme, darkMode, setDarkMode, onNavigate }) => (
   <div className={`flex items-center space-x-1 md:space-x-2`}>
-     <button onClick={onOpenInfo} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-red-400' : 'text-stone-500 hover:bg-stone-100 hover:text-red-500'}`} title="Donate">
+     <button onClick={() => onNavigate('donate')} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-red-400' : 'text-stone-500 hover:bg-stone-100 hover:text-red-500'}`} title="Donate">
         <Heart size={20} />
      </button>
-     <button onClick={onOpenInfo} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-blue-400' : 'text-stone-500 hover:bg-stone-100 hover:text-blue-600'}`} title="About & Contribute">
+     <button onClick={() => onNavigate('contribute')} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-blue-400' : 'text-stone-500 hover:bg-stone-100 hover:text-blue-600'}`} title="Contribute">
         <HelpCircle size={20} />
      </button>
      <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-800'}`}>
@@ -36,8 +41,9 @@ const GlobalHeaderButtons: React.FC<GlobalHeaderButtonsProps> = ({ theme, darkMo
 
 const App: React.FC = () => {
   // Navigation State
-  const [showLanding, setShowLanding] = useState(true);
+  const [currentView, setCurrentView] = useState<ViewState>('landing');
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoadingBook, setIsLoadingBook] = useState(false);
   
@@ -61,7 +67,6 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
   const [isCMSOpen, setIsCMSOpen] = useState(false);
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
   
   const [darkMode, setDarkMode] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -158,7 +163,7 @@ const App: React.FC = () => {
   const handleBookmarkNavigation = async (bookId: string, verseId: string) => {
     const book = getBookMetadata(bookId);
     if (book) {
-      setShowLanding(false);
+      setCurrentView('library'); // Set context
       setSelectedBook(book);
       const targetVerse = await getVerseById(bookId, verseId);
       if (targetVerse) {
@@ -202,7 +207,12 @@ const App: React.FC = () => {
 
   const handleHomeSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setShowLanding(false);
+    setCurrentView('library');
+  };
+
+  const navigateTo = (view: ViewState) => {
+    setSelectedBook(null);
+    setCurrentView(view);
   };
 
   // Filter books in library view
@@ -238,12 +248,25 @@ const App: React.FC = () => {
     ...(currentVerse.summary?.map(s => s.language) || [])
   ])).sort() : [];
 
+  // --- RENDER LOGIC ---
+  
+  if (currentView === 'donate') {
+      return <DonatePage onBack={() => setCurrentView('landing')} />;
+  }
+
+  if (currentView === 'contribute') {
+      return <ContributePage onBack={() => setCurrentView('landing')} onOpenCMS={() => setIsCMSOpen(true)} />;
+  }
+
+  if (currentView === 'projects') {
+      return <ProjectsPage onBack={() => setCurrentView('landing')} />;
+  }
+
   return (
     <div className={`min-h-screen w-full flex flex-col ${darkMode ? 'dark bg-stone-900 text-stone-100' : 'bg-stone-50 text-stone-900'}`}>
       
       {/* Global Modals */}
       <CMSPanel isOpen={isCMSOpen} onClose={() => setIsCMSOpen(false)} books={books} />
-      <InfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} onOpenCMS={() => setIsCMSOpen(true)} />
       
       <BookmarksPanel 
         bookmarks={bookmarks}
@@ -255,7 +278,7 @@ const App: React.FC = () => {
 
       {/* VIEW SELECTION */}
       {!selectedBook ? (
-        showLanding ? (
+        currentView === 'landing' ? (
             /* --- LANDING PAGE --- */
             <div className="min-h-screen bg-stone-900 flex flex-col items-center relative overflow-hidden font-sans">
                 
@@ -265,9 +288,7 @@ const App: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent h-40"></div>
                 </div>
 
-                <div className="absolute top-4 right-4 z-20 flex gap-2">
-                     <GlobalHeaderButtons theme="dark" darkMode={darkMode} setDarkMode={setDarkMode} onOpenInfo={() => setIsInfoOpen(true)} />
-                </div>
+                {/* Header Buttons Removed from Landing Page as per previous request */}
 
                 <div className="w-full p-4 flex justify-center items-center z-10 pt-8 sm:pt-12">
                   <form onSubmit={handleHomeSearch} className="w-full max-w-lg relative">
@@ -303,9 +324,9 @@ const App: React.FC = () => {
                   <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 font-serif tracking-wide">Sanatani Akhada</h3>
                </div>
 
-               <div className="w-full max-w-4xl px-6 pb-12 z-10 mt-4">
-                   <div className="flex justify-center gap-8 md:gap-16">
-                       <button onClick={() => setShowLanding(false)} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
+               <div className="w-full max-w-5xl px-6 pb-12 z-10 mt-4">
+                   <div className="flex flex-wrap justify-center gap-6 md:gap-12">
+                       <button onClick={() => setCurrentView('library')} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-yellow-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,200,0,0.2)] transition-all border border-white/20">
                                 <BookOpen size={24} strokeWidth={1.5} />
                             </div>
@@ -315,7 +336,7 @@ const App: React.FC = () => {
                             </div>
                        </button>
 
-                       <button onClick={() => setIsInfoOpen(true)} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
+                       <button onClick={() => setCurrentView('contribute')} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-red-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,100,100,0.2)] transition-all border border-white/20">
                                 <Feather size={24} strokeWidth={1.5} />
                             </div>
@@ -325,13 +346,23 @@ const App: React.FC = () => {
                             </div>
                        </button>
 
-                       <button onClick={() => setIsInfoOpen(true)} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
+                       <button onClick={() => setCurrentView('donate')} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-orange-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,165,0,0.2)] transition-all border border-white/20">
                                 <Heart size={24} strokeWidth={1.5} />
                             </div>
                             <div className="text-center">
                                 <span className="block font-deva font-bold text-white text-base">दानम्</span>
                                 <span className="block text-[10px] font-serif uppercase tracking-widest text-white/50">Donate</span>
+                            </div>
+                       </button>
+
+                       <button onClick={() => setCurrentView('projects')} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
+                            <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-blue-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(100,149,237,0.2)] transition-all border border-white/20">
+                                <LayoutGrid size={24} strokeWidth={1.5} />
+                            </div>
+                            <div className="text-center">
+                                <span className="block font-deva font-bold text-white text-base">प्रकल्पाः</span>
+                                <span className="block text-[10px] font-serif uppercase tracking-widest text-white/50">More Projects</span>
                             </div>
                        </button>
                    </div>
@@ -346,7 +377,7 @@ const App: React.FC = () => {
         /* --- LIBRARY VIEW --- */
         <>
         <header className="h-20 border-b border-stone-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-4 md:px-12 gap-4">
-           <div className="flex items-center space-x-3 cursor-pointer hover:opacity-80 shrink-0" onClick={() => setShowLanding(true)}>
+           <div className="flex items-center space-x-3 cursor-pointer hover:opacity-80 shrink-0" onClick={() => setCurrentView('landing')}>
              <div className="p-2 bg-ochre-600 rounded-lg text-white">
                 <Library size={24} />
              </div>
@@ -372,7 +403,7 @@ const App: React.FC = () => {
            </div>
 
            <div className="flex items-center space-x-2 md:space-x-4 shrink-0">
-              <GlobalHeaderButtons theme="light" darkMode={darkMode} setDarkMode={setDarkMode} onOpenInfo={() => setIsInfoOpen(true)} />
+              <GlobalHeaderButtons theme="light" darkMode={darkMode} setDarkMode={setDarkMode} onNavigate={navigateTo} />
               <div className="w-px h-6 bg-stone-300 mx-2 hidden md:block"></div>
               <button onClick={() => setIsBookmarksOpen(true)} className="text-stone-600 hover:text-ochre-700 transition-colors">
                 <BookmarkIcon size={20} />
@@ -382,7 +413,7 @@ const App: React.FC = () => {
 
         <main className="max-w-7xl mx-auto px-4 md:px-12 py-12 flex-1">
            <div className="flex justify-between items-center mb-6">
-              <button onClick={() => setShowLanding(true)} className="flex items-center text-sm font-bold text-stone-400 hover:text-ochre-600 uppercase tracking-wider transition-colors">
+              <button onClick={() => setCurrentView('landing')} className="flex items-center text-sm font-bold text-stone-400 hover:text-ochre-600 uppercase tracking-wider transition-colors">
                   <ChevronLeft size={16} className="mr-1" /> Back to Home
               </button>
               <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">{filteredBooks.length} Books Available</span>
@@ -449,7 +480,7 @@ const App: React.FC = () => {
                  </div>
               </div>
               <div className="flex items-center space-x-2">
-                 <GlobalHeaderButtons theme="light" darkMode={darkMode} setDarkMode={setDarkMode} onOpenInfo={() => setIsInfoOpen(true)} />
+                 <GlobalHeaderButtons theme="light" darkMode={darkMode} setDarkMode={setDarkMode} onNavigate={navigateTo} />
                  <div className="w-px h-6 bg-stone-300 mx-1"></div>
                  <button onClick={() => setIsBookmarksOpen(true)} className="p-2 hover:bg-stone-100 rounded-full transition-colors"><BookmarkIcon size={20} className="text-stone-500" /></button>
                  <button onClick={handleShare} className="p-2 hover:bg-stone-100 rounded-full transition-colors">{copied ? <Check size={20} className="text-green-600" /> : <Share2 size={20} className="text-stone-500" />}</button>
