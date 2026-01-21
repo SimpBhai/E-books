@@ -1,10 +1,8 @@
 import { Book, Chapter, Verse } from '../types';
 import { BOOKS } from '../data/metadata';
 import { getApprovedOverride } from './cms';
-
-// Fallback static imports for environments where import.meta.glob is not supported
-import * as ashtadhyayiData from '../data/ashtadhyayi';
-import * as yogasutraData from '../data/yogasutra';
+import { ASHTADHYAYI_DATA } from '../data/ashtadhyayi';
+import { YOGASUTRA_DATA } from '../data/yogasutra';
 
 export const getAvailableBooks = (): Book[] => {
   return BOOKS;
@@ -14,54 +12,20 @@ export const getBookMetadata = (bookId: string): Book | undefined => {
   return BOOKS.find(b => b.id === bookId);
 };
 
-// Map for fallback manual loading
-const STATIC_DATA_MAP: Record<string, any> = {
-    'ashtadhyayi': ashtadhyayiData,
-    'yogasutra': yogasutraData
-};
-
 export const getBookContent = async (bookId: string): Promise<Chapter[]> => {
   let staticChapters: Chapter[] = [];
   
-  try {
-    let loadedViaGlob = false;
-
-    // Use try-catch for glob access to prevent syntax errors in non-Vite environments crashing the script
-    try {
-        // @ts-ignore
-        const globFn = import.meta.glob;
-        if (globFn) {
-            const dataModules = globFn('../data/*.ts');
-            const filePath = `../data/${bookId}.ts`;
-            const loadModule = dataModules[filePath];
-
-            if (loadModule) {
-                const module: any = await loadModule();
-                const dataExport = Object.values(module).find((exp) => Array.isArray(exp));
-                if (dataExport) {
-                    staticChapters = dataExport as Chapter[];
-                    loadedViaGlob = true;
-                }
-            }
-        }
-    } catch (e) {
-        // Ignore glob errors and fall back to static
-    }
-    
-    // 2. Fallback: If glob didn't work or file not found in glob
-    if (!loadedViaGlob && STATIC_DATA_MAP[bookId]) {
-        console.log("Using static fallback for", bookId);
-        const module = STATIC_DATA_MAP[bookId];
-        // Find the exported array in the module
-        const dataExport = Object.values(module).find((exp) => Array.isArray(exp));
-        if (dataExport) {
-            staticChapters = dataExport as Chapter[];
-        }
-    }
-    
-  } catch (e) {
-    console.error(`Failed to load book ${bookId}`, e);
-    return [];
+  // Explicit mapping ensures build stability on Vercel
+  switch (bookId) {
+    case 'ashtadhyayi':
+        staticChapters = ASHTADHYAYI_DATA;
+        break;
+    case 'yogasutra':
+        staticChapters = YOGASUTRA_DATA;
+        break;
+    default:
+        console.warn(`No static data found for book: ${bookId}`);
+        staticChapters = [];
   }
 
   // Deep clone to avoid mutating static data in memory
