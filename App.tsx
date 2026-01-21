@@ -6,7 +6,7 @@ import BookmarksPanel from './components/BookmarksPanel';
 import CommentaryCard from './components/CommentaryCard';
 import CMSPanel from './components/CMSPanel';
 import InfoModal from './components/InfoModal';
-import { Menu, Search, Moon, Sun, ChevronLeft, ChevronRight, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, Filter, BookOpen, Globe, Loader2, Facebook, Youtube, Heart, CircleHelp, BookOpenText, Feather, HeartHandshake, X } from 'lucide-react';
+import { Menu, Search, Moon, Sun, ChevronLeft, ChevronRight, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, Filter, BookOpen, Globe, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X } from 'lucide-react';
 
 // --- CONFIGURATION ---
 const LANDING_BG_IMAGE = "https://images.unsplash.com/photo-1603217277800-4497e0eb7e3e?q=80&w=2600&auto=format&fit=crop";
@@ -26,7 +26,7 @@ const GlobalHeaderButtons: React.FC<GlobalHeaderButtonsProps> = ({ theme, darkMo
         <Heart size={20} />
      </button>
      <button onClick={onOpenInfo} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-blue-400' : 'text-stone-500 hover:bg-stone-100 hover:text-blue-600'}`} title="About & Contribute">
-        <CircleHelp size={20} />
+        <HelpCircle size={20} />
      </button>
      <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-800'}`}>
         {darkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -307,7 +307,7 @@ const App: React.FC = () => {
                    <div className="flex justify-center gap-8 md:gap-16">
                        <button onClick={() => setShowLanding(false)} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-yellow-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,200,0,0.2)] transition-all border border-white/20">
-                                <BookOpenText size={24} strokeWidth={1.5} />
+                                <BookOpen size={24} strokeWidth={1.5} />
                             </div>
                             <div className="text-center">
                                 <span className="block font-deva font-bold text-white text-base">ई-पुस्तकम्</span>
@@ -327,7 +327,7 @@ const App: React.FC = () => {
 
                        <button onClick={() => setIsInfoOpen(true)} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-orange-100 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.3)] group-hover:bg-white/20 group-hover:shadow-[0_0_20px_rgba(255,165,0,0.2)] transition-all border border-white/20">
-                                <HeartHandshake size={24} strokeWidth={1.5} />
+                                <Heart size={24} strokeWidth={1.5} />
                             </div>
                             <div className="text-center">
                                 <span className="block font-deva font-bold text-white text-base">दानम्</span>
