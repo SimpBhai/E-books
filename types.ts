@@ -4,19 +4,24 @@ export interface Book {
   author: string;
   description: string;
   category: string;
+  structure: {
+    level1: string; // Label for Chapter level (e.g. "Chapter", "Adhyaya")
+    level2: string; // Label for Section level (e.g. "Section", "Pada")
+    hasSections: boolean; // Whether the UI should show the section selector
+  };
 }
 
 export interface ContentText {
   id: string;
   language: string; // e.g., "English", "Hindi", "Sanskrit"
-  author: string;   // e.g., "S.C. Vasu" (Translator/Author)
+  author: string;   // e.g., "S.C. Vasu"
   text: string;
 }
 
 export interface Commentary {
   id: string;
-  author: string;     // e.g., "Vyasa"
-  language: string;   // e.g., "Sanskrit" (Original Language)
+  author: string;     // e.g., "Kashika"
+  language: string;   // e.g., "Sanskrit"
   text: string;       // Original Text
   translations?: ContentText[]; // Translations of this specific commentary
 }
@@ -37,6 +42,9 @@ export interface Verse {
   
   // Bhasya / Detailed Commentary
   commentaries?: Commentary[]; 
+  
+  // Optional flag for UI
+  isVerified?: boolean;
 }
 
 export interface Chapter {
@@ -56,38 +64,5 @@ export interface Bookmark {
   bookId: string;
   verseId: string;
   timestamp: number;
-}
-
-// --- CMS Types ---
-
-export type UserRole = 'admin' | 'contributor' | null;
-
-export interface User {
-  role: UserRole;
-  name: string;
-}
-
-export interface Contribution {
-  id: string;
-  timestamp: number;
-  contributorName: string;
-  status: 'pending' | 'approved' | 'rejected';
-  type: 'verse' | 'commentary' | 'translation'; // Added 'translation'
-  
-  // Target
-  bookId: string;
-  chapterId: number;
-  sectionId: number; // or Pada
-  verseNumber: number;
-  verseId: string; // "1.1.1"
-  
-  // Data
-  content: Verse;
-}
-
-export interface ContributorStat {
-  name: string;
-  pending: number;
-  approved: number;
-  rejected: number;
+  note?: string;
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Commentary } from '../types';
-import { Globe, BookOpen } from 'lucide-react';
+import { Globe } from 'lucide-react';
 
 interface CommentaryCardProps {
   commentary: Commentary;

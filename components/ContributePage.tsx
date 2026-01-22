@@ -1,12 +1,11 @@
 import React from 'react';
-import { ArrowLeft, Feather, Shield, PenTool } from 'lucide-react';
+import { ArrowLeft, Feather, Shield, PenTool, Mail } from 'lucide-react';
 
 interface ContributePageProps {
   onBack: () => void;
-  onOpenCMS: () => void;
 }
 
-const ContributePage: React.FC<ContributePageProps> = ({ onBack, onOpenCMS }) => {
+const ContributePage: React.FC<ContributePageProps> = ({ onBack }) => {
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 font-sans flex flex-col animate-in fade-in duration-300">
        <header className="p-4 md:p-8 flex items-center">
@@ -44,11 +43,11 @@ const ContributePage: React.FC<ContributePageProps> = ({ onBack, onOpenCMS }) =>
          </div>
 
          <div className="bg-stone-900 text-stone-200 p-8 rounded-2xl text-center">
-            <h3 className="text-2xl font-serif font-bold text-white mb-4">Ready to start?</h3>
-            <p className="mb-8 opacity-80">Access the Content Management System to submit your changes.</p>
-            <button onClick={onOpenCMS} className="bg-white text-stone-900 px-8 py-3 rounded-full font-bold hover:bg-stone-100 transition-colors inline-flex items-center shadow-lg hover:shadow-xl hover:-translate-y-1">
-               <Shield size={18} className="mr-2" /> Login to CMS
-            </button>
+            <h3 className="text-2xl font-serif font-bold text-white mb-4">How to Join?</h3>
+            <p className="mb-8 opacity-80">We coordinate our efforts through email. Please reach out to us to get started.</p>
+            <a href="mailto:contact@sanataniakhada.org" className="bg-white text-stone-900 px-8 py-3 rounded-full font-bold hover:bg-stone-100 transition-colors inline-flex items-center shadow-lg hover:shadow-xl hover:-translate-y-1">
+               <Mail size={18} className="mr-2" /> Contact Us
+            </a>
          </div>
        </main>
     </div>

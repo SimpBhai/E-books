@@ -1,13 +1,12 @@
 import React from 'react';
-import { X, Heart, Shield, Github, Mail, Coffee } from 'lucide-react';
+import { X, Heart, Github, Mail, Coffee } from 'lucide-react';
 
 interface InfoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenCMS: () => void;
 }
 
-const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, onOpenCMS }) => {
+const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
@@ -43,18 +42,8 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, onOpenCMS }) => 
               </p>
               <div className="flex gap-4 justify-center">
                  <a href="#" className="flex items-center text-xs font-bold text-stone-500 hover:text-stone-900"><Github size={14} className="mr-1"/> GitHub</a>
-                 <a href="#" className="flex items-center text-xs font-bold text-stone-500 hover:text-stone-900"><Mail size={14} className="mr-1"/> Contact</a>
+                 <a href="mailto:contact@sanataniakhada.org" className="flex items-center text-xs font-bold text-stone-500 hover:text-stone-900"><Mail size={14} className="mr-1"/> Contact</a>
               </div>
-           </div>
-
-           <div className="bg-stone-100 rounded-lg p-4 flex items-center justify-between">
-              <div>
-                 <h4 className="font-bold text-stone-800 text-sm">Contributor Access</h4>
-                 <p className="text-xs text-stone-500">Login to add verses or commentaries.</p>
-              </div>
-              <button onClick={() => { onClose(); onOpenCMS(); }} className="flex items-center gap-2 bg-white border border-stone-200 px-3 py-1.5 rounded-md text-xs font-bold hover:border-ochre-400 text-stone-700 transition-colors">
-                 <Shield size={14} /> Login
-              </button>
            </div>
         </div>
       </div>

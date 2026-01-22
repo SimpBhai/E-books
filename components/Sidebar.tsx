@@ -30,6 +30,18 @@ const Sidebar: React.FC<SidebarProps> = ({ activeBook, chapters, currentVerse, o
     setExpandedSections([]);
   };
 
+  // Helper to render verse list
+  const renderVerses = (verses: Verse[]) => (
+     <div className="ml-2 space-y-0.5 mt-1 mb-2">
+        {verses.length > 0 ? verses.map((verse) => (
+            <button key={verse.id} onClick={() => { onSelectVerse(verse); if (window.innerWidth < 768) setIsOpen(false); }} className={`w-full text-left px-3 py-1.5 text-xs rounded border-l-2 transition-all ${currentVerse?.id === verse.id ? 'border-ochre-500 bg-white shadow-sm text-ochre-900 font-semibold' : 'border-transparent text-stone-500 hover:bg-stone-100 hover:text-stone-800'}`}>
+              <span className="mr-2 opacity-50">{verse.id}</span>
+              <span className="font-deva">{verse.sanskrit}</span>
+            </button>
+          )) : <div className="px-3 py-2 text-xs text-stone-400 italic">No verses</div>}
+     </div>
+  );
+
   return (
     <>
       {isOpen && <div className="fixed inset-0 bg-black/50 z-20 md:hidden" onClick={() => setIsOpen(false)} />}
@@ -56,28 +68,26 @@ const Sidebar: React.FC<SidebarProps> = ({ activeBook, chapters, currentVerse, o
               </button>
               {expandedChapters.includes(chapter.id) && (
                 <div className="ml-2 mt-1 pl-2 border-l border-stone-200 space-y-1">
-                  {chapter.sections.map((section) => {
-                    const sectionKey = `${chapter.id}.${section.id}`;
-                    const isExpanded = expandedSections.includes(sectionKey);
-                    return (
-                      <div key={section.id}>
-                        <button onClick={() => toggleSection(chapter.id, section.id)} className={`w-full flex items-center justify-between py-1.5 px-2 text-sm rounded hover:text-ochre-700 transition-colors ${isExpanded ? 'text-ochre-700 font-medium' : 'text-stone-500'}`}>
-                          <span>{section.title}</span>
-                          <span className="text-xs text-stone-300">{section.verses.length}</span>
-                        </button>
-                        {isExpanded && (
-                          <div className="ml-2 space-y-0.5 mt-1 mb-2">
-                            {section.verses.length > 0 ? section.verses.map((verse) => (
-                                <button key={verse.id} onClick={() => { onSelectVerse(verse); if (window.innerWidth < 768) setIsOpen(false); }} className={`w-full text-left px-3 py-1.5 text-xs rounded border-l-2 transition-all ${currentVerse?.id === verse.id ? 'border-ochre-500 bg-white shadow-sm text-ochre-900 font-semibold' : 'border-transparent text-stone-500 hover:bg-stone-100 hover:text-stone-800'}`}>
-                                  <span className="mr-2 opacity-50">{verse.id}</span>
-                                  <span className="font-deva">{verse.sanskrit}</span>
-                                </button>
-                              )) : <div className="px-3 py-2 text-xs text-stone-400 italic">No verses</div>}
+                  {/* Conditional Rendering based on Structure Metadata */}
+                  {activeBook.structure?.hasSections ? (
+                      /* Standard: Render Sections then Verses */
+                      chapter.sections.map((section) => {
+                        const sectionKey = `${chapter.id}.${section.id}`;
+                        const isExpanded = expandedSections.includes(sectionKey);
+                        return (
+                          <div key={section.id}>
+                            <button onClick={() => toggleSection(chapter.id, section.id)} className={`w-full flex items-center justify-between py-1.5 px-2 text-sm rounded hover:text-ochre-700 transition-colors ${isExpanded ? 'text-ochre-700 font-medium' : 'text-stone-500'}`}>
+                              <span>{section.title}</span>
+                              <span className="text-xs text-stone-300">{section.verses.length}</span>
+                            </button>
+                            {isExpanded && renderVerses(section.verses)}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                        );
+                      })
+                  ) : (
+                      /* Flat: Render Verses directly (skip Section accordion) */
+                      renderVerses(chapter.sections.flatMap(s => s.verses))
+                  )}
                 </div>
               )}
             </div>
