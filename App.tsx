@@ -287,11 +287,10 @@ const App: React.FC = () => {
             <div className="min-h-screen bg-stone-900 flex flex-col items-center relative overflow-hidden font-sans">
                 
                 <div className="absolute inset-0 z-0">
-                    <img 
-                      src={LANDING_BG_IMAGE} 
-                      alt="Background" 
-                      className="w-full h-full object-cover opacity-50" 
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    {/* Replaced img tag with div background to avoid broken image icon */}
+                    <div 
+                        className="w-full h-full bg-cover bg-center opacity-50"
+                        style={{ backgroundImage: `url(${LANDING_BG_IMAGE})` }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/20"></div>
                     <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent h-40"></div>
@@ -318,7 +317,7 @@ const App: React.FC = () => {
                <div className="flex-1 flex flex-col items-center justify-center w-full max-w-4xl px-4 py-6 z-10 text-center relative">
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-600/20 blur-[120px] rounded-full pointer-events-none"></div>
 
-                  <h1 className="text-5xl md:text-7xl font-deva font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-200 mb-6 drop-shadow-[0_2px_10px_rgba(255,200,0,0.3)] tracking-wide">
+                  <h1 className="text-5xl md:text-7xl font-deva font-bold text-yellow-300 mb-6 drop-shadow-[0_4px_3px_rgba(0,0,0,0.9)] [text-shadow:_0_0_30px_rgba(253,224,71,0.5)] tracking-wide">
                     • सत्यप्रतिष्ठा •
                   </h1>
                   
