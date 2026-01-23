@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Verse, Book, ContentText } from '../types';
 import CommentaryCard from './CommentaryCard';
-import { ChevronLeft, ChevronRight, Bookmark as BookmarkIcon, BookOpen, Globe, Filter, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Bookmark as BookmarkIcon, BookOpen, Globe, Filter, ShieldCheck, Link, Check } from 'lucide-react';
 
 interface ReaderViewProps {
   book: Book;
@@ -22,9 +22,11 @@ const ReaderView: React.FC<ReaderViewProps> = ({
 }) => {
   const [contentLang, setContentLang] = useState<string>('English');
   const [selectedBhasyaIds, setSelectedBhasyaIds] = useState<string[]>([]);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Reset local view state when verse changes
   useEffect(() => {
+    setLinkCopied(false);
     if (verse.commentaries && verse.commentaries.length > 0) {
       setSelectedBhasyaIds([verse.commentaries[0].id]);
     } else {
@@ -39,6 +41,17 @@ const ReaderView: React.FC<ReaderViewProps> = ({
     let activeItem = items.find(i => i.language === contentLang);
     if (!activeItem) activeItem = items[0]; // Fallback
     return activeItem;
+  };
+
+  const handleCopyLink = async () => {
+    const url = `${window.location.origin}?book=${book.id}&verse=${verse.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link', err);
+    }
   };
 
   const availableLanguages = Array.from(new Set([
@@ -100,7 +113,7 @@ const ReaderView: React.FC<ReaderViewProps> = ({
               {verse.transliteration}
             </p>
             
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-6 gap-3">
               <button 
                 onClick={onToggleBookmark}
                 className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
@@ -109,6 +122,16 @@ const ReaderView: React.FC<ReaderViewProps> = ({
               >
                 <BookmarkIcon size={14} className={`mr-2 ${isBookmarked ? 'fill-current' : ''}`} />
                 {isBookmarked ? 'Saved' : 'Save'}
+              </button>
+              
+              <button 
+                onClick={handleCopyLink}
+                className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
+                  linkCopied ? 'bg-green-600 text-white shadow-sm' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+                }`}
+              >
+                {linkCopied ? <Check size={14} className="mr-2" /> : <Link size={14} className="mr-2" />}
+                {linkCopied ? 'Copied' : 'Link'}
               </button>
             </div>
 
