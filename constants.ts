@@ -1,1 +1,0 @@
-// Deprecated. See data/metadata.ts and services/library.ts

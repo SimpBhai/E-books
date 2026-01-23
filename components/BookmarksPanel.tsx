@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bookmark, Verse, Book } from '../types';
 import { X, Bookmark as BookmarkIcon, Trash2, ArrowRight, Loader2, Search, Edit2, Check, StickyNote } from 'lucide-react';
 import { getVerseById, getBookMetadata } from '../services/library';
+import { fuzzyMatch } from '../services/searchUtils';
 
 interface BookmarksPanelProps {
   bookmarks: Bookmark[];
@@ -60,18 +61,15 @@ const BookmarksPanel: React.FC<BookmarksPanelProps> = ({
 
   const filteredBookmarks = hydratedBookmarks.filter(({ bm, verse, book }) => {
      if (!verse || !book) return false;
-     const query = searchQuery.toLowerCase().trim();
-     if (!query) return true;
-
-     return (
-       // Deep search across all available text fields
-       book.title.toLowerCase().includes(query) ||
-       verse.sanskrit.toLowerCase().includes(query) ||
-       verse.id.toLowerCase().includes(query) ||
-       verse.transliteration.toLowerCase().includes(query) ||
-       (bm.note && bm.note.toLowerCase().includes(query)) ||
-       verse.sutrarth?.some(s => s.text.toLowerCase().includes(query)) ||
-       verse.summary?.some(s => s.text.toLowerCase().includes(query))
+     return fuzzyMatch(
+       searchQuery,
+       book.title,
+       verse.sanskrit,
+       verse.id,
+       verse.transliteration,
+       bm.note,
+       ...(verse.sutrarth?.map(s => s.text) || []),
+       ...(verse.summary?.map(s => s.text) || [])
      );
   });
 

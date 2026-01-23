@@ -1,58 +1,136 @@
-# How to Add New Books to SutraLibrary
+# SutraLibrary Developer Documentation
 
-This application is designed to be flexible and support various schemas (e.g., Simple Poetry, Darshan Sastra, Grammar).
+## Overview
+SutraLibrary is a static, client-side React application designed to render structured hierarchical texts (Sutras, Slokas, Poetry). It allows for deep linking, fuzzy searching, and multi-language commentary display.
 
-## 1. Prepare Your Data
-Create a new file in the `data/` folder (e.g., `data/gita.ts`).
-Structure your content using the `Chapter` and `Verse` interfaces defined in `types.ts`.
+This document outlines the procedure for extending the library with new volumes.
 
-### Verse Structure Options
-The viewer adapts based on what fields you provide in the `Verse` object:
+---
 
-1. **Darshan Sastra (Philosophy)**
-   - Use `sanskrit` & `transliteration`.
-   - Use `sutrarth`: For word-for-word or literal meanings.
-   - Use `summary`: For "Bhavarth" or the gist.
-   - Use `commentaries`: For "Bhasya" or detailed analysis.
+## 1. Data Architecture
 
-2. **Simple Texts (Poetry/Stotras)**
-   - Use `sanskrit` & `transliteration`.
-   - Use `summary`: For the translation.
-   - Omit `sutrarth` and `commentaries` if not needed.
+The application uses a strict TypeScript schema defined in `types.ts`. Understanding these interfaces is crucial before adding data.
 
-## 2. Register the Book
-Open `data/metadata.ts` and add an entry to the `BOOKS` array:
+### Core Interfaces
+
+1.  **Book**: Metadata container.
+    *   `structure`: Defines UI labels (e.g., "Chapter", "Adhyaya") and hierarchy depth (`hasSections`).
+2.  **Chapter**: Top-level division.
+3.  **Section**: Sub-division (optional in UI, mandatory in data structure).
+4.  **Verse**: The atomic unit of content.
+
+### Verse Schema Breakdown
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `string` | **Unique** identifier (e.g., "1.2.3"). Used for routing and deep links. |
+| `sanskrit` | `string` | The source text in Devanagari. |
+| `transliteration` | `string` | IAST or Romanized transliteration. |
+| `sutrarth` | `ContentText[]` | Literal word-for-word meaning. |
+| `summary` | `ContentText[]` | The "Bhavarth" or gist/translation. |
+| `commentaries` | `Commentary[]` | Detailed "Bhasya" or scholarly analysis. |
+
+---
+
+## 2. Adding a New Book
+
+### Step 1: Create the Data File
+Create a new file in `data/<book_id>.ts` (e.g., `data/manusmriti.ts`).
+We recommend using TypeScript to enforce schema validation during development.
+
+```typescript
+import { Chapter } from '../types';
+
+export const MANUSMRITI_DATA: Chapter[] = [
+  {
+    id: 1,
+    title: "Chapter 1",
+    sections: [
+      {
+        id: 1,
+        chapterId: 1,
+        title: "Section 1",
+        verses: [
+          {
+            id: "1.1",
+            chapter: 1,
+            number: 1,
+            sanskrit: "आसीदिदं तमोभूतमप्रज्ञातमलक्षणम् ।",
+            transliteration: "āsīdidaṃ tamobhūtamaprajñātamalakṣaṇam |",
+            summary: [
+               { id: "en", language: "English", author: "G. Buhler", text: "This (universe) existed in the shape of Darkness..." }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+];
+```
+
+### Step 2: Register Metadata
+Open `data/metadata.ts`. Add a new `Book` object to the `BOOKS` array.
 
 ```typescript
 {
-  id: 'gita', // Must match the ID used in step 3
-  title: 'Bhagavad Gita',
-  author: 'Vyasa',
-  category: 'Itihasa',
-  description: 'The conversation between Arjuna and Krishna.'
+  id: 'manusmriti', // This ID must match your filename convention
+  title: 'Manusmriti',
+  author: 'Manu',
+  category: 'Dharma Shastra',
+  description: 'Ancient legal text...',
+  structure: {
+    level1: 'Adhyaya',
+    level2: 'Section',
+    hasSections: false // Set to true if you use the 2-level accordion in Sidebar
+  }
 }
 ```
 
-## 3. Load the Content
-Open `services/library.ts` and update the `getBookContent` function:
+### Step 3: Wire into Service
+Open `services/library.ts`.
+1.  Import your data constant.
+2.  Add it to the `getBookContent` switch statement.
 
-1. Import your data file:
-   ```typescript
-   import { GITA_DATA } from '../data/gita';
-   ```
+```typescript
+import { MANUSMRITI_DATA } from '../data/manusmriti';
 
-2. Add a case to the switch statement:
-   ```typescript
-   export const getBookContent = (bookId: string): Chapter[] => {
-     switch (bookId) {
-       case 'ashtadhyayi': return ASHTADHYAYI_DATA;
-       case 'yogasutra': return YOGASUTRA_DATA;
-       case 'gita': return GITA_DATA; // <--- Add this line
-       default: return [];
-     }
-   };
-   ```
+// ... inside getBookContent
+case 'manusmriti':
+  staticChapters = MANUSMRITI_DATA;
+  break;
+```
 
-## Tips
-- **Performance**: For very large texts (1000+ books), consider replacing the static imports in `services/library.ts` with dynamic `import()` calls or fetching JSON from an external server/CDN.
-- **IDs**: Ensure verse IDs (e.g., "1.1") are unique within a book.
+---
+
+## 3. Best Practices & Validation
+
+### Runtime Validation
+The application includes a `validateBookData` utility in `services/library.ts`. When a book is loaded, the application checks:
+1.  If chapters exist.
+2.  If the hierarchical structure (Chapter -> Section -> Verse) remains intact.
+3.  If critical fields (`id`, `sanskrit`) are present.
+
+If validation fails, an error is logged to the console, and an empty book is returned to prevent the UI from crashing.
+
+### Performance
+For datasets exceeding 5MB:
+*   Do not bundle them in the main bundle.
+*   Convert `getBookContent` to use dynamic `import()`:
+    ```typescript
+    case 'large-book':
+       const mod = await import('../data/large-book');
+       staticChapters = mod.LARGE_BOOK_DATA;
+       break;
+    ```
+
+### IDs
+*   **Verse IDs** must be unique within a book.
+*   **Translation IDs** (inside `ContentText`) should be simple codes like 'en', 'hi', or 'auth-name'.
+
+---
+
+## 4. Troubleshooting
+
+*   **Book not appearing**: Check `data/metadata.ts`.
+*   **White screen on select**: Check console for "Data integrity validation failed". Ensure your data file exports an array of `Chapter` objects, not `Verse` objects directly.
+*   **Search not working**: Ensure `fuzzyMatch` in `searchUtils.ts` supports the character set used (currently optimized for Latin and Devanagari).
