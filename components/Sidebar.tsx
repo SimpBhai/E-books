@@ -16,6 +16,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeBook, chapters, currentVerse, o
   const [expandedChapters, setExpandedChapters] = useState<number[]>([1]);
   const [expandedSections, setExpandedSections] = useState<string[]>(["1.1"]); 
 
+  // Guard clause: If activeBook is not ready, do not render to avoid "Uncaught TypeError"
+  if (!activeBook) return null;
+
   const toggleChapter = (id: number) => {
     setExpandedChapters(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
   };
@@ -33,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeBook, chapters, currentVerse, o
   // Helper to render verse list
   const renderVerses = (verses: Verse[]) => (
      <div className="ml-2 space-y-0.5 mt-1 mb-2">
-        {verses.length > 0 ? verses.map((verse) => (
+        {verses && verses.length > 0 ? verses.map((verse) => (
             <button key={verse.id} onClick={() => { onSelectVerse(verse); if (window.innerWidth < 768) setIsOpen(false); }} className={`w-full text-left px-3 py-1.5 text-xs rounded border-l-2 transition-all ${currentVerse?.id === verse.id ? 'border-ochre-500 bg-white shadow-sm text-ochre-900 font-semibold' : 'border-transparent text-stone-500 hover:bg-stone-100 hover:text-stone-800'}`}>
               <span className="mr-2 opacity-50">{verse.id}</span>
               <span className="font-deva">{verse.sanskrit}</span>
@@ -60,7 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeBook, chapters, currentVerse, o
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {chapters.length > 0 ? chapters.map((chapter) => (
+          {chapters && chapters.length > 0 ? chapters.map((chapter) => (
             <div key={chapter.id} className="select-none">
               <button onClick={() => toggleChapter(chapter.id)} className={`w-full flex items-center justify-between p-2 rounded-lg text-sm font-medium transition-colors ${expandedChapters.includes(chapter.id) ? 'bg-ochre-50 text-ochre-800' : 'text-stone-600 hover:bg-stone-100'}`}>
                 <span className="text-left">{chapter.title}</span>
@@ -71,22 +74,22 @@ const Sidebar: React.FC<SidebarProps> = ({ activeBook, chapters, currentVerse, o
                   {/* Conditional Rendering based on Structure Metadata */}
                   {activeBook.structure?.hasSections ? (
                       /* Standard: Render Sections then Verses */
-                      chapter.sections.map((section) => {
+                      (chapter.sections || []).map((section) => {
                         const sectionKey = `${chapter.id}.${section.id}`;
                         const isExpanded = expandedSections.includes(sectionKey);
                         return (
                           <div key={section.id}>
                             <button onClick={() => toggleSection(chapter.id, section.id)} className={`w-full flex items-center justify-between py-1.5 px-2 text-sm rounded hover:text-ochre-700 transition-colors ${isExpanded ? 'text-ochre-700 font-medium' : 'text-stone-500'}`}>
                               <span>{section.title}</span>
-                              <span className="text-xs text-stone-300">{section.verses.length}</span>
+                              <span className="text-xs text-stone-300">{section.verses?.length || 0}</span>
                             </button>
-                            {isExpanded && renderVerses(section.verses)}
+                            {isExpanded && renderVerses(section.verses || [])}
                           </div>
                         );
                       })
                   ) : (
                       /* Flat: Render Verses directly (skip Section accordion) */
-                      renderVerses(chapter.sections.flatMap(s => s.verses))
+                      renderVerses((chapter.sections || []).flatMap(s => s.verses || []) || [])
                   )}
                 </div>
               )}

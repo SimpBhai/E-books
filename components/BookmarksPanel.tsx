@@ -34,7 +34,7 @@ const BookmarksPanel: React.FC<BookmarksPanelProps> = ({
       setLoading(true);
       const fetchDetails = async () => {
         const promises = bookmarks.map(async (bm) => {
-            const book = getBookMetadata(bm.bookId);
+            const book = await getBookMetadata(bm.bookId);
             const verse = await getVerseById(bm.bookId, bm.verseId);
             return { bm, verse, book };
         });

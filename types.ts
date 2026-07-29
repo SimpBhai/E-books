@@ -33,6 +33,7 @@ export interface Verse {
   number: number;
   sanskrit: string;
   transliteration: string;
+  padachheda?: string;
   
   // Sutrarth / Literal Meaning
   sutrarth?: ContentText[];

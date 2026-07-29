@@ -1,2 +1,1 @@
-// Component Removed.
-export default function AIPunditPanel() { return null; }
+// AI features removed as per request.

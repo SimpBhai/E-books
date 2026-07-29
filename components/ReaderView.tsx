@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Verse, Book, ContentText } from '../types';
+import { Verse, Book, ContentText, Commentary } from '../types';
 import CommentaryCard from './CommentaryCard';
-import { ChevronLeft, ChevronRight, Bookmark as BookmarkIcon, BookOpen, Globe, Filter, ShieldCheck, Link, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Bookmark as BookmarkIcon, BookOpen, Globe, Filter, ShieldCheck, Sparkles, Loader2, ScrollText } from 'lucide-react';
 
 interface ReaderViewProps {
   book: Book;
@@ -22,15 +22,46 @@ const ReaderView: React.FC<ReaderViewProps> = ({
 }) => {
   const [contentLang, setContentLang] = useState<string>('English');
   const [selectedBhasyaIds, setSelectedBhasyaIds] = useState<string[]>([]);
-  const [linkCopied, setLinkCopied] = useState(false);
+  const [dynamicBhasya, setDynamicBhasya] = useState<Commentary | null>(null);
+  const [isLoadingBhasya, setIsLoadingBhasya] = useState<boolean>(false);
+
+  // Fetch or generate dynamic Bhashya when verse changes or when static commentaries are missing
+  const fetchClassicalBhasya = async () => {
+    setIsLoadingBhasya(true);
+    try {
+      const res = await fetch('/api/bhasya', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sutraId: verse.id,
+          sanskrit: verse.sanskrit,
+          transliteration: verse.transliteration,
+          sutrarth: verse.sutrarth,
+          bookTitle: book.title
+        })
+      });
+      if (!res.ok) throw new Error('Failed to fetch Bhasya');
+      const data: Commentary = await res.json();
+      setDynamicBhasya(data);
+      setSelectedBhasyaIds(prev => prev.includes(data.id) ? prev : [...prev, data.id]);
+    } catch (err) {
+      console.error('Error fetching Bhasya:', err);
+    } finally {
+      setIsLoadingBhasya(false);
+    }
+  };
 
   // Reset local view state when verse changes
   useEffect(() => {
-    setLinkCopied(false);
+    setDynamicBhasya(null);
+    setIsLoadingBhasya(false);
+
     if (verse.commentaries && verse.commentaries.length > 0) {
       setSelectedBhasyaIds([verse.commentaries[0].id]);
     } else {
       setSelectedBhasyaIds([]);
+      // Auto fetch Bhasya if no static commentaries exist
+      fetchClassicalBhasya();
     }
   }, [verse.id]);
 
@@ -41,17 +72,6 @@ const ReaderView: React.FC<ReaderViewProps> = ({
     let activeItem = items.find(i => i.language === contentLang);
     if (!activeItem) activeItem = items[0]; // Fallback
     return activeItem;
-  };
-
-  const handleCopyLink = async () => {
-    const url = `${window.location.origin}?book=${book.id}&verse=${verse.id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy link', err);
-    }
   };
 
   const availableLanguages = Array.from(new Set([
@@ -67,6 +87,13 @@ const ReaderView: React.FC<ReaderViewProps> = ({
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
   };
+
+  const allCommentaries: Commentary[] = [
+    ...(verse.commentaries || []),
+    ...(dynamicBhasya && !verse.commentaries?.some(c => c.id === dynamicBhasya.id) ? [dynamicBhasya] : [])
+  ];
+
+  const activeCommentaries = allCommentaries.filter(c => selectedBhasyaIds.includes(c.id));
 
   const isFirst = allVerses[0]?.id === verse.id;
   const isLast = allVerses[allVerses.length - 1]?.id === verse.id;
@@ -113,7 +140,7 @@ const ReaderView: React.FC<ReaderViewProps> = ({
               {verse.transliteration}
             </p>
             
-            <div className="flex justify-center mb-6 gap-3">
+            <div className="flex justify-center mb-6">
               <button 
                 onClick={onToggleBookmark}
                 className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
@@ -122,16 +149,6 @@ const ReaderView: React.FC<ReaderViewProps> = ({
               >
                 <BookmarkIcon size={14} className={`mr-2 ${isBookmarked ? 'fill-current' : ''}`} />
                 {isBookmarked ? 'Saved' : 'Save'}
-              </button>
-              
-              <button 
-                onClick={handleCopyLink}
-                className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
-                  linkCopied ? 'bg-green-600 text-white shadow-sm' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-                }`}
-              >
-                {linkCopied ? <Check size={14} className="mr-2" /> : <Link size={14} className="mr-2" />}
-                {linkCopied ? 'Copied' : 'Link'}
               </button>
             </div>
 
@@ -195,41 +212,70 @@ const ReaderView: React.FC<ReaderViewProps> = ({
         </div>
 
         {/* Commentaries Section */}
-        {verse.commentaries && verse.commentaries.length > 0 && (
-          <div>
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 px-2">
-              <h3 className="text-xl font-serif font-bold text-stone-800 mb-2 md:mb-0">Bhasya (Commentary)</h3>
-              <div className="flex flex-wrap gap-2">
-                {verse.commentaries.map(c => (
+        <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-8 md:p-10 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 border-b border-stone-100 pb-4">
+            <div className="flex items-center gap-2">
+              <ScrollText size={22} className="text-ochre-600" />
+              <h3 className="text-2xl font-serif font-bold text-stone-800">Bhasya (Commentary)</h3>
+            </div>
+
+            {allCommentaries.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {allCommentaries.map(c => (
                   <button
                     key={c.id}
                     onClick={() => toggleBhasya(c.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border transition-all ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border transition-all ${
                       selectedBhasyaIds.includes(c.id) 
-                        ? 'bg-stone-800 text-white border-stone-800' 
-                        : 'bg-white text-stone-500 border-stone-200 hover:border-stone-400'
+                        ? 'bg-stone-800 text-white border-stone-800 shadow-sm' 
+                        : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
                     }`}
                   >
                     {c.author}
                   </button>
                 ))}
+                {!dynamicBhasya && (
+                  <button
+                    onClick={fetchClassicalBhasya}
+                    disabled={isLoadingBhasya}
+                    className="px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border bg-ochre-50 text-ochre-700 border-ochre-200 hover:bg-ochre-100 flex items-center gap-1.5 transition-all"
+                  >
+                    {isLoadingBhasya ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                    Generate Deep Bhashya
+                  </button>
+                )}
               </div>
-            </div>
-
-            <div className="space-y-6">
-              {selectedBhasyaIds.length > 0 ? (
-                verse.commentaries
-                  .filter(c => selectedBhasyaIds.includes(c.id))
-                  .map(c => <CommentaryCard key={c.id} commentary={c} />)
-              ) : (
-                <div className="text-center p-8 bg-stone-50 rounded-xl border border-stone-200 border-dashed">
-                  <Filter className="mx-auto h-8 w-8 text-stone-300 mb-2" />
-                  <p className="text-stone-400 italic">Select commentaries from above to view.</p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
-        )}
+
+          {isLoadingBhasya ? (
+            <div className="bg-stone-50 p-8 rounded-xl border border-stone-200 text-center text-stone-500">
+              <Loader2 size={32} className="animate-spin text-ochre-600 mx-auto mb-3" />
+              <p className="font-serif text-lg text-stone-700 font-medium">Loading Classical Bhashya Exposition...</p>
+              <p className="text-xs text-stone-400 mt-1">Retrieving Vyasa Bhashya and traditional commentary breakdown</p>
+            </div>
+          ) : activeCommentaries.length > 0 ? (
+            <div className="space-y-6">
+              {activeCommentaries.map(c => (
+                <CommentaryCard key={c.id} commentary={c} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center p-8 bg-stone-50 rounded-xl border border-stone-200 border-dashed">
+              <ScrollText className="mx-auto h-10 w-10 text-stone-300 mb-3" />
+              <p className="text-stone-700 font-serif font-bold text-lg mb-1">Classical Bhashya</p>
+              <p className="text-stone-500 text-sm max-w-md mx-auto mb-6">
+                No pre-loaded commentary selected. Load Maharshi Vyasa's classical Bhashya exposition for this sutra.
+              </p>
+              <button
+                onClick={fetchClassicalBhasya}
+                className="px-6 py-2.5 bg-ochre-600 hover:bg-ochre-700 text-white text-sm font-bold rounded-lg shadow transition-all inline-flex items-center gap-2"
+              >
+                <Sparkles size={16} /> Load Classical Bhashya Exposition
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

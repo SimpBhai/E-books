@@ -70,7 +70,11 @@ const App: React.FC = () => {
 
   // Initialization
   useEffect(() => {
-    setBooks(getAvailableBooks());
+    const fetchBooks = async () => {
+      const available = await getAvailableBooks();
+      setBooks(available);
+    };
+    fetchBooks();
   }, []);
 
   useEffect(() => {
@@ -158,7 +162,7 @@ const App: React.FC = () => {
   };
 
   const handleBookmarkNavigation = async (bookId: string, verseId: string) => {
-    const book = getBookMetadata(bookId);
+    const book = await getBookMetadata(bookId);
     if (book) {
       setCurrentView('library');
       setSelectedBook(book);
@@ -168,33 +172,15 @@ const App: React.FC = () => {
   };
 
   const handleShare = async () => {
-    if (!currentVerse || !selectedBook) return;
-
-    // Construct the shared content
-    const shareUrl = window.location.href;
-    const shareText = `${currentVerse.sanskrit}\n\n${currentVerse.transliteration}\n\n— ${selectedBook.title} ${currentVerse.id}\n${shareUrl}`;
-    
-    // Use Native Share API if available
+    if (!currentVerse) return;
+    const shareText = `${currentVerse.sanskrit}\n\n${currentVerse.transliteration}\n— ${selectedBook?.title} ${currentVerse.id}\nRead more at SutraLibrary`;
     if (navigator.share) {
-      try { 
-        await navigator.share({ 
-          title: `${selectedBook.title} ${currentVerse.id}`, 
-          text: shareText,
-          url: shareUrl 
-        }); 
-      } catch (err) { 
-        // Ignore AbortError (user cancelled)
-        if ((err as Error).name !== 'AbortError') console.error('Share failed:', err); 
-      }
+      try { await navigator.share({ title: `${selectedBook?.title} ${currentVerse.id}`, text: shareText }); } 
+      catch (err) { console.error(err); }
     } else {
-      // Fallback to Clipboard
-      try {
-        await navigator.clipboard.writeText(shareText);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch (err) {
-        console.error('Failed to copy to clipboard', err);
-      }
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -479,13 +465,7 @@ const App: React.FC = () => {
                  <GlobalHeaderButtons theme="light" darkMode={darkMode} setDarkMode={setDarkMode} onNavigate={(v) => { setSelectedBook(null); setCurrentView(v); }} />
                  <div className="w-px h-6 bg-stone-300 mx-1"></div>
                  <button onClick={() => setIsBookmarksOpen(true)} className="p-2 hover:bg-stone-100 rounded-full transition-colors"><BookmarkIcon size={20} className="text-stone-500" /></button>
-                 <button 
-                   onClick={handleShare} 
-                   className="p-2 hover:bg-stone-100 rounded-full transition-colors text-stone-500 hover:text-stone-900"
-                   title="Share Verse"
-                 >
-                   {copied ? <Check size={20} className="text-green-600" /> : <Share2 size={20} />}
-                 </button>
+                 <button onClick={handleShare} className="p-2 hover:bg-stone-100 rounded-full transition-colors">{copied ? <Check size={20} className="text-green-600" /> : <Share2 size={20} className="text-stone-500" />}</button>
               </div>
             </header>
 

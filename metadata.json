@@ -1,5 +1,8 @@
 {
   "name": "SutraLibrary",
   "description": "A digital library and reader for ancient texts, featuring a clean interface for reading classical sutras and scriptures.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
