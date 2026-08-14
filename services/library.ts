@@ -1,5 +1,5 @@
 import { Book, Chapter, Verse } from '../types';
-import { BOOKS } from '../data/metadata';
+import { BOOKS, UNIQUE_BOOKS } from '../data/metadata';
 import { ASHTADHYAYI_DATA } from '../data/ashtadhyayi';
 import { YOGASUTRA_DATA } from '../data/yogasutra';
 import { fuzzyMatch } from './searchUtils';
@@ -26,10 +26,10 @@ export const getAvailableBooks = async (): Promise<Book[]> => {
     if (!res.ok) throw new Error('Failed to fetch books from API');
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) return data;
-    return BOOKS;
+    return UNIQUE_BOOKS;
   } catch (error) {
     console.warn('API fetch failed, using local books data:', error);
-    return BOOKS;
+    return UNIQUE_BOOKS;
   }
 };
 
