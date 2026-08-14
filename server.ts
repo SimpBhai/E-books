@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { createServer as createViteServer } from 'vite';
 import { BOOKS, UNIQUE_BOOKS } from './data/metadata';
 import { getChaptersForBook, getVersesForBook } from './services/bookRegistry';
@@ -9,8 +10,18 @@ import { fuzzyMatch } from './services/searchUtils';
 const app = express();
 const PORT = 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'development-only-change-me';
-const sessions = new Map<string, number>();
+const sessions = new Map<string, { expiresAt: number; userId: string }>();
 const attempts = new Map<string, { count: number; resetAt: number }>();
+
+type ConfiguredUser = { id: string; passwordHash: string };
+function configuredUsers(): ConfiguredUser[] {
+  try {
+    const raw = process.env.SITE_USERS_JSON || '[]';
+    const users = JSON.parse(raw);
+    if (!Array.isArray(users)) return [];
+    return users.filter((user): user is ConfiguredUser => typeof user?.id === 'string' && typeof user?.passwordHash === 'string' && user.id.length <= 128 && /^\$2[aby]?\$\d{2}\$/.test(user.passwordHash));
+  } catch { return []; }
+}
 const apiHits = new Map<string, { count: number; resetAt: number }>();
 const allowedOrigin = process.env.API_ALLOWED_ORIGIN || '';
 
@@ -34,21 +45,24 @@ app.use(express.json({ limit: '32kb' }));
 function tokenFor(value: string) { return crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('hex'); }
 function safeEqual(a: string, b: string) { const aa = Buffer.from(a); const bb = Buffer.from(b); return aa.length === bb.length && crypto.timingSafeEqual(aa, bb); }
 function cookieValue(req: express.Request) { return req.headers.cookie?.match(/(?:^|; )sutra_session=([^;]+)/)?.[1]; }
-function isSessionValid(req: express.Request) { const token = cookieValue(req); const expires = token ? sessions.get(token) : undefined; return Boolean(expires && expires > Date.now()); }
+function currentSession(req: express.Request) { const token = cookieValue(req); const session = token ? sessions.get(token) : undefined; if (!session || session.expiresAt <= Date.now()) { if (token) sessions.delete(token); return undefined; } return session; }
+function isSessionValid(req: express.Request) { return Boolean(currentSession(req)); }
 function requireSession(req: express.Request, res: express.Response, next: express.NextFunction) { if (!isSessionValid(req)) return res.status(401).json({ error: 'Authentication required.' }); next(); }
 function rateLimit(store: Map<string, { count: number; resetAt: number }>, key: string, max: number, windowMs: number) { const now = Date.now(); const current = store.get(key); if (!current || current.resetAt < now) { store.set(key, { count: 1, resetAt: now + windowMs }); return true; } current.count += 1; return current.count <= max; }
 function apiKey(req: express.Request) { return req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim(); }
 function authorizedApi(req: express.Request) { const key = apiKey(req); const configured = (process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || '').split(',').map(x => x.trim()).filter(Boolean); return Boolean(key && configured.some(item => safeEqual(item, key))); }
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const ip = req.ip || 'unknown';
   if (!rateLimit(attempts, ip, 8, 15 * 60_000)) return res.status(429).json({ error: 'Too many attempts. Try again later.' });
   const username = typeof req.body?.username === 'string' ? req.body.username : '';
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
-  const valid = process.env.SITE_USERNAME && process.env.SITE_PASSWORD && safeEqual(username, process.env.SITE_USERNAME) && safeEqual(password, process.env.SITE_PASSWORD);
-  if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
-  const token = tokenFor(`${username}:${crypto.randomUUID()}`);
-  sessions.set(token, Date.now() + 8 * 60 * 60_000);
+  const users = configuredUsers();
+  const user = users.find(candidate => safeEqual(candidate.id, username));
+  const valid = user ? await bcrypt.compare(password, user.passwordHash) : false;
+  if (!valid || !user) return res.status(401).json({ error: 'Invalid credentials.' });
+  const token = tokenFor(`${user.id}:${crypto.randomUUID()}`);
+  sessions.set(token, { userId: user.id, expiresAt: Date.now() + 8 * 60 * 60_000 });
   res.setHeader('Set-Cookie', `sutra_session=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`);
   res.json({ authenticated: true });
 });

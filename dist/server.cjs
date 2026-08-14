@@ -25,6 +25,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var import_express = __toESM(require("express"), 1);
 var import_path = __toESM(require("path"), 1);
 var import_crypto = __toESM(require("crypto"), 1);
+var import_bcryptjs = __toESM(require("bcryptjs"), 1);
 var import_vite = require("vite");
 
 // data/metadata.ts
@@ -2809,6 +2810,16 @@ var PORT = 3e3;
 var SESSION_SECRET = process.env.SESSION_SECRET || "development-only-change-me";
 var sessions = /* @__PURE__ */ new Map();
 var attempts = /* @__PURE__ */ new Map();
+function configuredUsers() {
+  try {
+    const raw = process.env.SITE_USERS_JSON || "[]";
+    const users = JSON.parse(raw);
+    if (!Array.isArray(users)) return [];
+    return users.filter((user) => typeof user?.id === "string" && typeof user?.passwordHash === "string" && user.id.length <= 128 && /^\$2[aby]?\$\d{2}\$/.test(user.passwordHash));
+  } catch {
+    return [];
+  }
+}
 var apiHits = /* @__PURE__ */ new Map();
 var allowedOrigin = process.env.API_ALLOWED_ORIGIN || "";
 app.disable("x-powered-by");
@@ -2838,10 +2849,17 @@ function safeEqual(a, b) {
 function cookieValue(req) {
   return req.headers.cookie?.match(/(?:^|; )sutra_session=([^;]+)/)?.[1];
 }
-function isSessionValid(req) {
+function currentSession(req) {
   const token = cookieValue(req);
-  const expires = token ? sessions.get(token) : void 0;
-  return Boolean(expires && expires > Date.now());
+  const session = token ? sessions.get(token) : void 0;
+  if (!session || session.expiresAt <= Date.now()) {
+    if (token) sessions.delete(token);
+    return void 0;
+  }
+  return session;
+}
+function isSessionValid(req) {
+  return Boolean(currentSession(req));
 }
 function requireSession(req, res, next) {
   if (!isSessionValid(req)) return res.status(401).json({ error: "Authentication required." });
@@ -2865,15 +2883,17 @@ function authorizedApi(req) {
   const configured = (process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "").split(",").map((x) => x.trim()).filter(Boolean);
   return Boolean(key && configured.some((item) => safeEqual(item, key)));
 }
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   const ip = req.ip || "unknown";
   if (!rateLimit(attempts, ip, 8, 15 * 6e4)) return res.status(429).json({ error: "Too many attempts. Try again later." });
   const username = typeof req.body?.username === "string" ? req.body.username : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
-  const valid = process.env.SITE_USERNAME && process.env.SITE_PASSWORD && safeEqual(username, process.env.SITE_USERNAME) && safeEqual(password, process.env.SITE_PASSWORD);
-  if (!valid) return res.status(401).json({ error: "Invalid credentials." });
-  const token = tokenFor(`${username}:${import_crypto.default.randomUUID()}`);
-  sessions.set(token, Date.now() + 8 * 60 * 6e4);
+  const users = configuredUsers();
+  const user = users.find((candidate) => safeEqual(candidate.id, username));
+  const valid = user ? await import_bcryptjs.default.compare(password, user.passwordHash) : false;
+  if (!valid || !user) return res.status(401).json({ error: "Invalid credentials." });
+  const token = tokenFor(`${user.id}:${import_crypto.default.randomUUID()}`);
+  sessions.set(token, { userId: user.id, expiresAt: Date.now() + 8 * 60 * 6e4 });
   res.setHeader("Set-Cookie", `sutra_session=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
   res.json({ authenticated: true });
 });
