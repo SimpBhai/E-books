@@ -9,7 +9,8 @@ import DonatePage from './components/DonatePage';
 import ContributePage from './components/ContributePage';
 import ProjectsPage from './components/ProjectsPage';
 import AIPage from './components/AIPage';
-import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid } from 'lucide-react';
+import LoginPage from './components/LoginPage';
+import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid, MessageCircle } from 'lucide-react';
 
 // --- CONFIGURATION ---
 type ViewState = 'landing' | 'library' | 'ai' | 'donate' | 'contribute' | 'projects';
@@ -58,6 +59,11 @@ const App: React.FC = () => {
   const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/session').then(response => response.json()).then(data => setAuthenticated(Boolean(data.authenticated))).catch(() => setAuthenticated(false));
+  }, []);
 
   // Bookmarks State
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
@@ -214,6 +220,9 @@ const App: React.FC = () => {
     })
     : [];
 
+  if (authenticated === null) return <div className="min-h-screen bg-stone-950" />;
+  if (!authenticated) return <LoginPage onLogin={() => setAuthenticated(true)} />;
+
   // View Routing
   if (currentView === 'donate') return <DonatePage onBack={() => setCurrentView('landing')} />;
   if (currentView === 'contribute') return <ContributePage onBack={() => setCurrentView('landing')} />;
@@ -274,6 +283,11 @@ const App: React.FC = () => {
                                 <BookOpen size={24} />
                             </div>
                             <span className="block font-deva font-bold text-white text-base">ई-पुस्तकम्</span>
+                       </button>
+
+                       <button onClick={() => setCurrentView('ai')} aria-label="Open AI chat" className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
+                            <div className="w-14 h-14 bg-yellow-300 text-stone-950 rounded-full flex items-center justify-center border border-yellow-200 shadow-lg shadow-yellow-300/20"><MessageCircle size={24} /></div>
+                            <span className="block font-deva font-bold text-white text-base">AI संवाद</span>
                        </button>
 
                        <button onClick={() => setCurrentView('contribute')} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">

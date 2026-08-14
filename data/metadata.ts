@@ -29,3 +29,6 @@ export const BOOKS: Book[] = [
     structure: { level1: 'Adhyaya', level2: 'Verse', hasSections: false }
   }
 ];
+
+// Stable IDs prevent repeated entries across epustakalaya/epustakam views.
+export const UNIQUE_BOOKS: Book[] = [...new Map(BOOKS.map(book => [book.id, book])).values()];

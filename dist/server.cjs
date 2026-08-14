@@ -24,6 +24,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 // server.ts
 var import_express = __toESM(require("express"), 1);
 var import_path = __toESM(require("path"), 1);
+var import_crypto = __toESM(require("crypto"), 1);
 var import_vite = require("vite");
 
 // data/metadata.ts
@@ -65,6 +66,7 @@ var BOOKS = [
     structure: { level1: "Adhyaya", level2: "Verse", hasSections: false }
   }
 ];
+var UNIQUE_BOOKS = [...new Map(BOOKS.map((book) => [book.id, book])).values()];
 
 // data/ashtadhyayi.ts
 var ASHTADHYAYI_DATA = [
@@ -2804,74 +2806,133 @@ var fuzzyMatch = (query, ...targets) => {
 // server.ts
 var app = (0, import_express.default)();
 var PORT = 3e3;
+var SESSION_SECRET = process.env.SESSION_SECRET || "development-only-change-me";
+var sessions = /* @__PURE__ */ new Map();
+var attempts = /* @__PURE__ */ new Map();
+var apiHits = /* @__PURE__ */ new Map();
+var allowedOrigin = process.env.API_ALLOWED_ORIGIN || "";
+app.disable("x-powered-by");
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
+  if (allowedOrigin && req.headers.origin === allowedOrigin) res.header("Access-Control-Allow-Origin", allowedOrigin);
+  res.header("Vary", "Origin");
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token");
+  res.header("X-Content-Type-Options", "nosniff");
+  res.header("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.header("X-Frame-Options", "DENY");
+  res.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.header("Content-Security-Policy", "default-src 'self'; connect-src 'self' https://api.groq.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'");
+  if (process.env.NODE_ENV === "production") res.header("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
-app.use(import_express.default.json({ limit: "64kb" }));
-app.get("/api/books", (_req, res) => res.json(BOOKS));
-app.get("/api/books/search", (req, res) => {
+app.use(import_express.default.json({ limit: "32kb" }));
+function tokenFor(value) {
+  return import_crypto.default.createHmac("sha256", SESSION_SECRET).update(value).digest("hex");
+}
+function safeEqual(a, b) {
+  const aa = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return aa.length === bb.length && import_crypto.default.timingSafeEqual(aa, bb);
+}
+function cookieValue(req) {
+  return req.headers.cookie?.match(/(?:^|; )sutra_session=([^;]+)/)?.[1];
+}
+function isSessionValid(req) {
+  const token = cookieValue(req);
+  const expires = token ? sessions.get(token) : void 0;
+  return Boolean(expires && expires > Date.now());
+}
+function requireSession(req, res, next) {
+  if (!isSessionValid(req)) return res.status(401).json({ error: "Authentication required." });
+  next();
+}
+function rateLimit(store, key, max, windowMs) {
+  const now = Date.now();
+  const current = store.get(key);
+  if (!current || current.resetAt < now) {
+    store.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  current.count += 1;
+  return current.count <= max;
+}
+function apiKey(req) {
+  return req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+}
+function authorizedApi(req) {
+  const key = apiKey(req);
+  const configured = (process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "").split(",").map((x) => x.trim()).filter(Boolean);
+  return Boolean(key && configured.some((item) => safeEqual(item, key)));
+}
+app.post("/api/auth/login", (req, res) => {
+  const ip = req.ip || "unknown";
+  if (!rateLimit(attempts, ip, 8, 15 * 6e4)) return res.status(429).json({ error: "Too many attempts. Try again later." });
+  const username = typeof req.body?.username === "string" ? req.body.username : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  const valid = process.env.SITE_USERNAME && process.env.SITE_PASSWORD && safeEqual(username, process.env.SITE_USERNAME) && safeEqual(password, process.env.SITE_PASSWORD);
+  if (!valid) return res.status(401).json({ error: "Invalid credentials." });
+  const token = tokenFor(`${username}:${import_crypto.default.randomUUID()}`);
+  sessions.set(token, Date.now() + 8 * 60 * 6e4);
+  res.setHeader("Set-Cookie", `sutra_session=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
+  res.json({ authenticated: true });
+});
+app.get("/api/auth/session", (req, res) => res.json({ authenticated: isSessionValid(req) }));
+app.post("/api/auth/logout", (req, res) => {
+  const token = cookieValue(req);
+  if (token) sessions.delete(token);
+  res.setHeader("Set-Cookie", "sutra_session=; HttpOnly; Path=/; SameSite=Strict; Max-Age=0");
+  res.json({ authenticated: false });
+});
+app.get("/api/books", requireSession, (_req, res) => res.json(UNIQUE_BOOKS));
+app.get("/api/books/search", requireSession, (req, res) => {
   const query = String(req.query.q ?? "").trim();
   if (query.length < 2) return res.json([]);
-  const results = BOOKS.flatMap((book) => getVersesForBook(book.id).filter((verse) => fuzzyMatch(query, verse.id, verse.sanskrit, verse.transliteration, ...verse.sutrarth?.map((x) => x.text) ?? [], ...verse.summary?.map((x) => x.text) ?? [])).map((verse) => ({ book, verse })));
-  res.json(results);
+  res.json(BOOKS.flatMap((book) => getVersesForBook(book.id).filter((v) => fuzzyMatch(query, v.id, v.sanskrit, v.transliteration, ...v.sutrarth?.map((x) => x.text) ?? [], ...v.summary?.map((x) => x.text) ?? [])).map((verse) => ({ book, verse }))));
 });
-app.get("/api/books/:id", (req, res) => {
+app.get("/api/books/:id", requireSession, (req, res) => {
   const book = BOOKS.find((item) => item.id === req.params.id);
   return book ? res.json(book) : res.status(404).json({ error: "Book not found" });
 });
-app.get(["/api/books/:id/chapters", "/api/books/:id/content"], (req, res) => {
+app.get(["/api/books/:id/chapters", "/api/books/:id/content"], requireSession, (req, res) => {
   const book = BOOKS.find((item) => item.id === req.params.id);
   return book ? res.json(getChaptersForBook(book.id)) : res.status(404).json({ error: "Book not found" });
 });
-app.get("/api/books/:id/verses", (req, res) => {
+app.get("/api/books/:id/verses", requireSession, (req, res) => {
   const book = BOOKS.find((item) => item.id === req.params.id);
   return book ? res.json(getVersesForBook(book.id)) : res.status(404).json({ error: "Book not found" });
 });
-app.get("/api/books/:bookId/verses/:verseId", (req, res) => {
+app.get("/api/books/:bookId/verses/:verseId", requireSession, (req, res) => {
   const verse = getVersesForBook(req.params.bookId).find((item) => item.id === req.params.verseId);
   return verse ? res.json(verse) : res.status(404).json({ error: "Verse not found" });
 });
-function authorized(req) {
-  const key = req.headers.authorization?.replace(/^Bearer\s+/i, "");
-  const keys = (process.env.GROQ_API_KEYS ?? process.env.GROQ_API_KEY ?? "").split(",").map((item) => item.trim()).filter(Boolean);
-  return Boolean(key && keys.includes(key));
-}
 async function answerWithGroq(question, bookId) {
-  const context = (bookId ? getVersesForBook(bookId) : BOOKS.flatMap((book) => getVersesForBook(book.id))).slice(0, 80).map((verse) => `${verse.id}: ${verse.sanskrit}
-${verse.transliteration}
-${(verse.summary ?? []).map((x) => x.text).join(" ")}`).join("\n\n");
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-    body: JSON.stringify({ model: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile", temperature: 0.2, messages: [
-      { role: "system", content: "Answer only from the supplied Sanskrit library context. If context is insufficient, say so. Cite verse ids when possible." },
-      { role: "user", content: `Library context:
+  const context = (bookId ? getVersesForBook(bookId) : BOOKS.flatMap((book) => getVersesForBook(book.id))).slice(0, 80).map((v) => `${v.id}: ${v.sanskrit}
+${v.transliteration}
+${(v.summary ?? []).map((x) => x.text).join(" ")}`).join("\n\n");
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, body: JSON.stringify({ model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile", temperature: 0.2, messages: [{ role: "system", content: "Answer only from the supplied Sanskrit library context. If context is insufficient, say so. Cite verse ids when possible." }, { role: "user", content: `Library context:
 ${context}
 
-Question: ${question}` }
-    ] })
-  });
-  if (!response.ok) throw new Error(`Groq request failed: ${response.status}`);
+Question: ${question}` }] }) });
+  if (!response.ok) throw new Error("Groq request failed");
   const data = await response.json();
-  return data.choices?.[0]?.message?.content ?? "No answer was returned.";
+  return data.choices?.[0]?.message?.content || "No answer was returned.";
 }
 app.post("/api/ai/answer", async (req, res) => {
-  if (!authorized(req)) return res.status(401).json({ error: "A valid API key is required." });
+  const key = apiKey(req) || req.ip || "unknown";
+  if (!rateLimit(apiHits, key, 30, 6e4)) return res.status(429).json({ error: "Rate limit exceeded." });
+  if (!authorizedApi(req)) return res.status(401).json({ error: "A valid API key is required." });
   const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
   if (!question || question.length > 2e3) return res.status(400).json({ error: "Question must be 1\u20132000 characters." });
   if (!process.env.GROQ_API_KEY) return res.status(503).json({ error: "Groq is not configured." });
   try {
-    res.json({ answer: await answerWithGroq(question, req.body.bookId) });
+    res.json({ answer: await answerWithGroq(question, typeof req.body.bookId === "string" ? req.body.bookId : void 0) });
   } catch {
-    res.status(502).json({ error: "Groq request failed." });
+    res.status(502).json({ error: "AI provider unavailable." });
   }
 });
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") app.use((await (0, import_vite.createServer)({ server: { middlewareMode: true }, appType: "spa" })).middlewares);
+  if (process.env.NODE_ENV !== "production") app.use((await (0, import_vite.createServer)({ server: { middlewareMode: true, hmr: false }, appType: "spa" })).middlewares);
   else {
     app.use(import_express.default.static(import_path.default.join(process.cwd(), "dist")));
     app.get("*all", (_req, res) => res.sendFile(import_path.default.join(process.cwd(), "dist/index.html")));
