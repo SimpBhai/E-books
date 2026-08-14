@@ -2811,14 +2811,21 @@ var SESSION_SECRET = process.env.SESSION_SECRET || "development-only-change-me";
 var sessions = /* @__PURE__ */ new Map();
 var attempts = /* @__PURE__ */ new Map();
 function configuredUsers() {
+  const users = [];
   try {
     const raw = process.env.SITE_USERS_JSON || "[]";
-    const users = JSON.parse(raw);
-    if (!Array.isArray(users)) return [];
-    return users.filter((user) => typeof user?.id === "string" && typeof user?.passwordHash === "string" && user.id.length <= 128 && /^\$2[aby]?\$\d{2}\$/.test(user.passwordHash));
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      users.push(...parsed.filter((user) => typeof user?.id === "string" && typeof user?.passwordHash === "string" && user.id.length <= 128 && /^\$2[aby]?\$\d{2}\$/.test(user.passwordHash)));
+    }
   } catch {
-    return [];
   }
+  const legacyId = process.env.SITE_USERNAME;
+  const legacyPassword = process.env.SITE_PASSWORD;
+  if (legacyId && legacyPassword && !users.some((user) => user.id === legacyId)) {
+    users.push({ id: legacyId, passwordHash: legacyPassword });
+  }
+  return users;
 }
 var apiHits = /* @__PURE__ */ new Map();
 var allowedOrigin = process.env.API_ALLOWED_ORIGIN || "";
@@ -2890,7 +2897,10 @@ app.post("/api/auth/login", async (req, res) => {
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const users = configuredUsers();
   const user = users.find((candidate) => safeEqual(candidate.id, username));
-  const valid = user ? await import_bcryptjs.default.compare(password, user.passwordHash) : false;
+  let valid = false;
+  if (user) {
+    valid = /^\$2[aby]?\$\d{2}\$/.test(user.passwordHash) ? await import_bcryptjs.default.compare(password, user.passwordHash) : safeEqual(password, user.passwordHash);
+  }
   if (!valid || !user) return res.status(401).json({ error: "Invalid credentials." });
   const token = tokenFor(`${user.id}:${import_crypto.default.randomUUID()}`);
   sessions.set(token, { userId: user.id, expiresAt: Date.now() + 8 * 60 * 6e4 });

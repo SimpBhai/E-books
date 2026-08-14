@@ -6,7 +6,7 @@ Set these in deployment settings; never commit them:
 
 - `SITE_USERS_JSON`: JSON array of users with bcrypt hashes. Example:
   `[{"id":"user1","passwordHash":"$2b$10$..."},{"id":"admin","passwordHash":"$2b$10$..."}]`
-  Do not commit this value to GitHub. The legacy `SITE_USERNAME`/`SITE_PASSWORD` pair is no longer used by the multi-user login.
+  Do not commit this value to GitHub. `SITE_USERNAME` and `SITE_PASSWORD` remain supported as a single-user compatibility fallback during migration.
 - `SESSION_SECRET`: random value used to sign session tokens; change it to invalidate existing sessions.
 - `GROQ_API_KEY`: server-only Groq Console credential.
 - `GROQ_API_KEYS`: comma-separated client keys for Discord, Telegram, or other websites. These are not Groq keys. Rotate by replacing the list and redeploying.
