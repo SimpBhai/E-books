@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Verse, Book, ContentText, Commentary } from '../types';
+import React, { useState } from 'react';
+import { Verse, Book, ContentText } from '../types';
 import CommentaryCard from './CommentaryCard';
-import { ChevronLeft, ChevronRight, Bookmark as BookmarkIcon, BookOpen, Globe, Filter, ShieldCheck, Sparkles, Loader2, ScrollText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Bookmark as BookmarkIcon, BookOpen, Globe, ShieldCheck, ScrollText } from 'lucide-react';
 
 interface ReaderViewProps {
   book: Book;
@@ -21,49 +21,7 @@ const ReaderView: React.FC<ReaderViewProps> = ({
   onNavigateVerse 
 }) => {
   const [contentLang, setContentLang] = useState<string>('English');
-  const [selectedBhasyaIds, setSelectedBhasyaIds] = useState<string[]>([]);
-  const [dynamicBhasya, setDynamicBhasya] = useState<Commentary | null>(null);
-  const [isLoadingBhasya, setIsLoadingBhasya] = useState<boolean>(false);
-
-  // Fetch or generate dynamic Bhashya when verse changes or when static commentaries are missing
-  const fetchClassicalBhasya = async () => {
-    setIsLoadingBhasya(true);
-    try {
-      const res = await fetch('/api/bhasya', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sutraId: verse.id,
-          sanskrit: verse.sanskrit,
-          transliteration: verse.transliteration,
-          sutrarth: verse.sutrarth,
-          bookTitle: book.title
-        })
-      });
-      if (!res.ok) throw new Error('Failed to fetch Bhasya');
-      const data: Commentary = await res.json();
-      setDynamicBhasya(data);
-      setSelectedBhasyaIds(prev => prev.includes(data.id) ? prev : [...prev, data.id]);
-    } catch (err) {
-      console.error('Error fetching Bhasya:', err);
-    } finally {
-      setIsLoadingBhasya(false);
-    }
-  };
-
-  // Reset local view state when verse changes
-  useEffect(() => {
-    setDynamicBhasya(null);
-    setIsLoadingBhasya(false);
-
-    if (verse.commentaries && verse.commentaries.length > 0) {
-      setSelectedBhasyaIds([verse.commentaries[0].id]);
-    } else {
-      setSelectedBhasyaIds([]);
-      // Auto fetch Bhasya if no static commentaries exist
-      fetchClassicalBhasya();
-    }
-  }, [verse.id]);
+  const [selectedBhasyaIds, setSelectedBhasyaIds] = useState<string[]>(verse.commentaries?.[0]?.id ? [verse.commentaries[0].id] : []);
 
   const isDevanagari = (lang: string) => lang === 'Hindi' || lang === 'Sanskrit';
 
@@ -88,11 +46,7 @@ const ReaderView: React.FC<ReaderViewProps> = ({
     );
   };
 
-  const allCommentaries: Commentary[] = [
-    ...(verse.commentaries || []),
-    ...(dynamicBhasya && !verse.commentaries?.some(c => c.id === dynamicBhasya.id) ? [dynamicBhasya] : [])
-  ];
-
+  const allCommentaries = verse.commentaries || [];
   const activeCommentaries = allCommentaries.filter(c => selectedBhasyaIds.includes(c.id));
 
   const isFirst = allVerses[0]?.id === verse.id;
@@ -234,27 +188,12 @@ const ReaderView: React.FC<ReaderViewProps> = ({
                     {c.author}
                   </button>
                 ))}
-                {!dynamicBhasya && (
-                  <button
-                    onClick={fetchClassicalBhasya}
-                    disabled={isLoadingBhasya}
-                    className="px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border bg-ochre-50 text-ochre-700 border-ochre-200 hover:bg-ochre-100 flex items-center gap-1.5 transition-all"
-                  >
-                    {isLoadingBhasya ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                    Generate Deep Bhashya
-                  </button>
-                )}
+
               </div>
             )}
           </div>
 
-          {isLoadingBhasya ? (
-            <div className="bg-stone-50 p-8 rounded-xl border border-stone-200 text-center text-stone-500">
-              <Loader2 size={32} className="animate-spin text-ochre-600 mx-auto mb-3" />
-              <p className="font-serif text-lg text-stone-700 font-medium">Loading Classical Bhashya Exposition...</p>
-              <p className="text-xs text-stone-400 mt-1">Retrieving Vyasa Bhashya and traditional commentary breakdown</p>
-            </div>
-          ) : activeCommentaries.length > 0 ? (
+          {activeCommentaries.length > 0 ? (
             <div className="space-y-6">
               {activeCommentaries.map(c => (
                 <CommentaryCard key={c.id} commentary={c} />
@@ -263,16 +202,8 @@ const ReaderView: React.FC<ReaderViewProps> = ({
           ) : (
             <div className="text-center p-8 bg-stone-50 rounded-xl border border-stone-200 border-dashed">
               <ScrollText className="mx-auto h-10 w-10 text-stone-300 mb-3" />
-              <p className="text-stone-700 font-serif font-bold text-lg mb-1">Classical Bhashya</p>
-              <p className="text-stone-500 text-sm max-w-md mx-auto mb-6">
-                No pre-loaded commentary selected. Load Maharshi Vyasa's classical Bhashya exposition for this sutra.
-              </p>
-              <button
-                onClick={fetchClassicalBhasya}
-                className="px-6 py-2.5 bg-ochre-600 hover:bg-ochre-700 text-white text-sm font-bold rounded-lg shadow transition-all inline-flex items-center gap-2"
-              >
-                <Sparkles size={16} /> Load Classical Bhashya Exposition
-              </button>
+              <p className="text-stone-700 font-serif font-bold text-lg mb-1">No published commentary</p>
+              <p className="text-stone-500 text-sm max-w-md mx-auto">Commentaries are read-only GitHub content. AI explanations are available separately from the Library.</p>
             </div>
           )}
         </div>

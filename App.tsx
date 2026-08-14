@@ -8,10 +8,11 @@ import ReaderView from './components/ReaderView';
 import DonatePage from './components/DonatePage';
 import ContributePage from './components/ContributePage';
 import ProjectsPage from './components/ProjectsPage';
+import AIPage from './components/AIPage';
 import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid } from 'lucide-react';
 
 // --- CONFIGURATION ---
-type ViewState = 'landing' | 'library' | 'donate' | 'contribute' | 'projects';
+type ViewState = 'landing' | 'library' | 'ai' | 'donate' | 'contribute' | 'projects';
 
 interface GlobalHeaderButtonsProps {
   theme: 'light' | 'dark';
@@ -217,6 +218,7 @@ const App: React.FC = () => {
   if (currentView === 'donate') return <DonatePage onBack={() => setCurrentView('landing')} />;
   if (currentView === 'contribute') return <ContributePage onBack={() => setCurrentView('landing')} />;
   if (currentView === 'projects') return <ProjectsPage onBack={() => setCurrentView('landing')} />;
+  if (currentView === 'ai') return <AIPage onBack={() => setCurrentView('library')} />;
 
   return (
     <div className={`min-h-screen w-full flex flex-col ${darkMode ? 'dark bg-stone-900 text-stone-100' : 'bg-stone-50 text-stone-900'}`}>
@@ -321,7 +323,8 @@ const App: React.FC = () => {
                 {libraryQuery && <button onClick={() => setLibraryQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"><X size={14} /></button>}
            </div>
 
-           <div className="flex items-center space-x-2 md:space-x-4 shrink-0">
+                         <div className="flex items-center space-x-2 md:space-x-4 shrink-0">
+              <button onClick={() => setCurrentView('ai')} className="hidden md:block rounded-lg px-3 py-2 text-sm font-bold text-ochre-700 hover:bg-ochre-50">Ask AI</button>
               <GlobalHeaderButtons theme="light" darkMode={darkMode} setDarkMode={setDarkMode} onNavigate={(v) => { setSelectedBook(null); setCurrentView(v); }} />
               <div className="w-px h-6 bg-stone-300 mx-2 hidden md:block"></div>
               <button onClick={() => setIsBookmarksOpen(true)} className="text-stone-600 hover:text-ochre-700 transition-colors"><BookmarkIcon size={20} /></button>

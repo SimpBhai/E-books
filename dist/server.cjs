@@ -42,15 +42,27 @@ var BOOKS = [
   },
   {
     id: "yogasutra",
-    title: "Yoga Sutras",
+    title: "Yoga Darshan (Yoga Sutras)",
     author: "Patanjali",
     category: "Philosophy",
-    description: "The seminal text on the theory and practice of Yoga, organized into four chapters (padas).",
-    structure: {
-      level1: "Pada",
-      level2: "Section",
-      hasSections: false
-    }
+    description: "The seminal text on the theory and practice of Yoga, organized into four padas.",
+    structure: { level1: "Pada", level2: "Section", hasSections: false }
+  },
+  {
+    id: "manusmriti",
+    title: "Manusmriti",
+    author: "Manu",
+    category: "Dharma\u015B\u0101stra",
+    description: "A GitHub-versioned edition of the Manusmriti with a schema reserved for its chapter and verse conventions.",
+    structure: { level1: "Adhyaya", level2: "Verse", hasSections: false }
+  },
+  {
+    id: "bhagavad-gita",
+    title: "Bhagavad Gita",
+    author: "Vyasa",
+    category: "Philosophy",
+    description: "A GitHub-versioned edition of the Bhagavad Gita with chapter-specific verse and translation fields.",
+    structure: { level1: "Adhyaya", level2: "Verse", hasSections: false }
   }
 ];
 
@@ -2758,6 +2770,23 @@ var YOGASUTRA_DATA = [
   }
 ];
 
+// services/bookRegistry.ts
+var BOOK_ADAPTERS = {
+  ashtadhyayi: { chapters: ASHTADHYAYI_DATA },
+  yogasutra: { chapters: YOGASUTRA_DATA },
+  manusmriti: { chapters: [] },
+  "bhagavad-gita": { chapters: [] }
+};
+function getChaptersForBook(bookId) {
+  const adapter = BOOK_ADAPTERS[bookId];
+  return adapter?.normalize ? adapter.normalize(adapter.chapters) : adapter?.chapters ?? [];
+}
+function getVersesForBook(bookId) {
+  return getChaptersForBook(bookId).flatMap(
+    (chapter) => (chapter.sections ?? []).flatMap((section) => section.verses ?? [])
+  );
+}
+
 // services/searchUtils.ts
 var normalizeText = (text) => {
   if (!text) return "";
@@ -2778,210 +2807,76 @@ var PORT = 3e3;
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
-app.use(import_express.default.json());
-function getChaptersForBook(bookId) {
-  switch (bookId) {
-    case "ashtadhyayi":
-      return ASHTADHYAYI_DATA;
-    case "yogasutra":
-      return YOGASUTRA_DATA;
-    default:
-      return [];
-  }
-}
-function getVersesForBook(bookId) {
-  const chapters = getChaptersForBook(bookId);
-  return chapters.flatMap((c) => (c.sections || []).flatMap((s) => s.verses || []));
-}
-app.post("/api/bhasya", async (req, res) => {
-  const { sutraId, sanskrit, transliteration, sutrarth, bookTitle } = req.body;
-  if (!sanskrit) {
-    res.status(400).json({ error: "Sanskrit text is required" });
-    return;
-  }
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    const englishMeaning = Array.isArray(sutrarth) ? sutrarth.find((s) => s.language === "English")?.text || "" : typeof sutrarth === "string" ? sutrarth : "";
-    const hindiMeaning = Array.isArray(sutrarth) ? sutrarth.find((s) => s.language === "Hindi")?.text || "" : "";
-    res.json({
-      id: `classical-bhasya-${sutraId}`,
-      author: "Vyasa Bhashya / Classical Exposition",
-      language: "Sanskrit",
-      text: `${sanskrit} \u0907\u0924\u093F \u0938\u0942\u0924\u094D\u0930\u0938\u094D\u092F \u0935\u094D\u092F\u093E\u0938\u092D\u093E\u0937\u094D\u092F\u092E\u094D \u090F\u0935\u0902 \u0936\u093E\u0938\u094D\u0924\u094D\u0930\u093E\u0930\u094D\u0925\u0903\u0964 \u090F\u0924\u0938\u094D\u092F \u0938\u0942\u0924\u094D\u0930\u0938\u094D\u092F \u0924\u093E\u0924\u094D\u092A\u0930\u094D\u092F\u0902 \u092F\u0924\u094D\u2014${sanskrit}\u0964 \u0905\u0924\u094D\u0930 \u091A\u093F\u0924\u094D\u0924\u0938\u094D\u092F \u090F\u0915\u093E\u0917\u094D\u0930\u0924\u093E \u0924\u0924\u094D\u0924\u094D\u0935\u0928\u093F\u0930\u0942\u092A\u0923\u0902 \u091A \u092A\u094D\u0930\u0924\u093F\u092A\u093E\u0926\u094D\u092F\u0924\u0947\u0964`,
-      translations: [
-        {
-          id: "eng-vyasa",
-          language: "English",
-          author: "Classical English Commentary",
-          text: `Vyasa Bhashya Exposition on Sutra ${sutraId} ("${sanskrit}"):
-
-${englishMeaning || "This sutra lays down essential principles in the tradition."}
-
-The traditional commentary clarifies that this verse directs the practitioner towards disciplined contemplation, untangling mental modifications and illuminating the underlying truth.`
-        },
-        {
-          id: "hin-vyasa",
-          language: "Hindi",
-          author: "\u0935\u094D\u092F\u093E\u0938\u092D\u093E\u0937\u094D\u092F \u0939\u093F\u0928\u094D\u0926\u0940 \u0905\u0928\u0941\u0935\u093E\u0926",
-          text: `\u0938\u0942\u0924\u094D\u0930 ${sutraId} ("${sanskrit}") \u092A\u0930 \u0935\u094D\u092F\u093E\u0938\u092D\u093E\u0937\u094D\u092F \u0915\u093E \u0938\u093E\u0930:
-
-${hindiMeaning || "\u092F\u0939 \u0938\u0942\u0924\u094D\u0930 \u092A\u094D\u0930\u093E\u092E\u093E\u0923\u093F\u0915 \u0936\u093E\u0938\u094D\u0924\u094D\u0930\u093E\u0930\u094D\u0925 \u0914\u0930 \u0905\u092D\u094D\u092F\u093E\u0938 \u0915\u0940 \u0926\u093F\u0936\u093E \u0928\u093F\u0930\u094D\u0926\u093F\u0937\u094D\u091F \u0915\u0930\u0924\u093E \u0939\u0948\u0964"}
-
-\u092E\u0939\u0930\u094D\u0937\u093F \u0935\u094D\u092F\u093E\u0938 \u0915\u0947 \u0905\u0928\u0941\u0938\u093E\u0930 \u0907\u0938 \u0938\u0942\u0924\u094D\u0930 \u0915\u093E \u092E\u0942\u0932 \u0909\u0926\u094D\u0926\u0947\u0936\u094D\u092F \u0938\u093E\u0927\u0915 \u0915\u094B \u091A\u093F\u0924\u094D\u0924 \u0915\u0940 \u0938\u094D\u0925\u093F\u0930\u0924\u093E \u090F\u0935\u0902 \u092F\u0925\u093E\u0930\u094D\u0925 \u091C\u094D\u091E\u093E\u0928 \u0915\u0940 \u092A\u094D\u0930\u093E\u092A\u094D\u0924\u093F \u0915\u0930\u093E\u0928\u093E \u0939\u0948\u0964`
-        }
-      ]
-    });
-    return;
-  }
-  try {
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey });
-    const prompt = `You are an expert Vedic and Sanskrit scholar specializing in Maharshi Vyasa's Yoga Sutra Bhashya, Patanjali Mahabhashya, Kashika Vritti, and Shankara Bhashya.
-
-Generate an authentic classical Bhashya commentary for the following sutra:
-- Book: ${bookTitle || "Sutra Scripture"}
-- Sutra ID: ${sutraId || "1.1"}
-- Sanskrit Text: ${sanskrit}
-- Transliteration: ${transliteration || ""}
-- Basic Meaning: ${JSON.stringify(sutrarth || "")}
-
-Respond ONLY with valid JSON in this structure:
-{
-  "sanskritBhashya": "Authentic Sanskrit Bhashya commentary text...",
-  "englishTranslation": "Thorough English commentary explaining the Sanskrit terms, philosophical context, and practical application...",
-  "hindiTranslation": "\u0935\u093F\u0938\u094D\u0924\u0943\u0924 \u0939\u093F\u0928\u094D\u0926\u0940 \u092D\u093E\u0937\u094D\u092F \u090F\u0935\u0902 \u0935\u094D\u092F\u093E\u0916\u094D\u092F\u093E..."
-}`;
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt
-    });
-    const rawText = response.text || "";
-    const cleanJsonText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-    const parsed = JSON.parse(cleanJsonText);
-    res.json({
-      id: `ai-bhasya-${sutraId}`,
-      author: bookTitle?.toLowerCase().includes("ashtadhyayi") ? "Mahabhashya / Kashika Exposition" : "Vyasa Bhashya (\u0935\u094D\u092F\u093E\u0938\u092D\u093E\u0937\u094D\u092F\u092E\u094D)",
-      language: "Sanskrit",
-      text: parsed.sanskritBhashya || `${sanskrit} \u0907\u0924\u093F \u0938\u0942\u0924\u094D\u0930\u0938\u094D\u092F \u0935\u094D\u092F\u093E\u0938\u092D\u093E\u0937\u094D\u092F\u092E\u094D\u0964`,
-      translations: [
-        {
-          id: "eng-ai",
-          language: "English",
-          author: "Classical English Exposition",
-          text: parsed.englishTranslation || "Exposition generated successfully."
-        },
-        {
-          id: "hin-ai",
-          language: "Hindi",
-          author: "\u0935\u094D\u092F\u093E\u0938\u092D\u093E\u0937\u094D\u092F \u0939\u093F\u0928\u094D\u0926\u0940 \u0905\u0928\u0941\u0935\u093E\u0926",
-          text: parsed.hindiTranslation || "\u092D\u093E\u0937\u094D\u092F \u0905\u0928\u0941\u0935\u093E\u0926 \u0909\u092A\u0932\u092C\u094D\u0927\u0964"
-        }
-      ]
-    });
-  } catch (error) {
-    console.error("Error invoking Gemini for Bhashya:", error);
-    res.status(500).json({ error: "Failed to generate Bhashya exposition" });
-  }
-});
-app.get("/api/books", (_req, res) => {
-  res.json(BOOKS);
-});
+app.use(import_express.default.json({ limit: "64kb" }));
+app.get("/api/books", (_req, res) => res.json(BOOKS));
 app.get("/api/books/search", (req, res) => {
-  const query = req.query.q || "";
-  if (!query || query.trim().length < 2) {
-    res.json([]);
-    return;
-  }
-  const results = [];
-  for (const book of BOOKS) {
-    const verses = getVersesForBook(book.id);
-    const matches = verses.filter(
-      (v) => fuzzyMatch(
-        query,
-        v.id,
-        v.sanskrit,
-        v.transliteration,
-        ...v.sutrarth?.map((s) => s.text) || [],
-        ...v.summary?.map((s) => s.text) || []
-      )
-    );
-    matches.forEach((v) => results.push({ book, verse: v }));
-  }
+  const query = String(req.query.q ?? "").trim();
+  if (query.length < 2) return res.json([]);
+  const results = BOOKS.flatMap((book) => getVersesForBook(book.id).filter((verse) => fuzzyMatch(query, verse.id, verse.sanskrit, verse.transliteration, ...verse.sutrarth?.map((x) => x.text) ?? [], ...verse.summary?.map((x) => x.text) ?? [])).map((verse) => ({ book, verse })));
   res.json(results);
 });
 app.get("/api/books/:id", (req, res) => {
-  const book = BOOKS.find((b) => b.id === req.params.id);
-  if (!book) {
-    res.status(404).json({ error: "Book not found" });
-    return;
-  }
-  res.json(book);
+  const book = BOOKS.find((item) => item.id === req.params.id);
+  return book ? res.json(book) : res.status(404).json({ error: "Book not found" });
 });
-app.get("/api/books/:id/chapters", (req, res) => {
-  const book = BOOKS.find((b) => b.id === req.params.id);
-  if (!book) {
-    res.status(404).json({ error: "Book not found" });
-    return;
-  }
-  const chapters = getChaptersForBook(req.params.id);
-  res.json(chapters);
-});
-app.get("/api/books/:id/content", (req, res) => {
-  const book = BOOKS.find((b) => b.id === req.params.id);
-  if (!book) {
-    res.status(404).json({ error: "Book not found" });
-    return;
-  }
-  const chapters = getChaptersForBook(req.params.id);
-  res.json(chapters);
+app.get(["/api/books/:id/chapters", "/api/books/:id/content"], (req, res) => {
+  const book = BOOKS.find((item) => item.id === req.params.id);
+  return book ? res.json(getChaptersForBook(book.id)) : res.status(404).json({ error: "Book not found" });
 });
 app.get("/api/books/:id/verses", (req, res) => {
-  const book = BOOKS.find((b) => b.id === req.params.id);
-  if (!book) {
-    res.status(404).json({ error: "Book not found" });
-    return;
-  }
-  const verses = getVersesForBook(req.params.id);
-  res.json(verses);
+  const book = BOOKS.find((item) => item.id === req.params.id);
+  return book ? res.json(getVersesForBook(book.id)) : res.status(404).json({ error: "Book not found" });
 });
 app.get("/api/books/:bookId/verses/:verseId", (req, res) => {
-  const { bookId, verseId } = req.params;
-  const book = BOOKS.find((b) => b.id === bookId);
-  if (!book) {
-    res.status(404).json({ error: "Book not found" });
-    return;
+  const verse = getVersesForBook(req.params.bookId).find((item) => item.id === req.params.verseId);
+  return verse ? res.json(verse) : res.status(404).json({ error: "Verse not found" });
+});
+function authorized(req) {
+  const key = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+  const keys = (process.env.GROQ_API_KEYS ?? process.env.GROQ_API_KEY ?? "").split(",").map((item) => item.trim()).filter(Boolean);
+  return Boolean(key && keys.includes(key));
+}
+async function answerWithGroq(question, bookId) {
+  const context = (bookId ? getVersesForBook(bookId) : BOOKS.flatMap((book) => getVersesForBook(book.id))).slice(0, 80).map((verse) => `${verse.id}: ${verse.sanskrit}
+${verse.transliteration}
+${(verse.summary ?? []).map((x) => x.text).join(" ")}`).join("\n\n");
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+    body: JSON.stringify({ model: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile", temperature: 0.2, messages: [
+      { role: "system", content: "Answer only from the supplied Sanskrit library context. If context is insufficient, say so. Cite verse ids when possible." },
+      { role: "user", content: `Library context:
+${context}
+
+Question: ${question}` }
+    ] })
+  });
+  if (!response.ok) throw new Error(`Groq request failed: ${response.status}`);
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content ?? "No answer was returned.";
+}
+app.post("/api/ai/answer", async (req, res) => {
+  if (!authorized(req)) return res.status(401).json({ error: "A valid API key is required." });
+  const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
+  if (!question || question.length > 2e3) return res.status(400).json({ error: "Question must be 1\u20132000 characters." });
+  if (!process.env.GROQ_API_KEY) return res.status(503).json({ error: "Groq is not configured." });
+  try {
+    res.json({ answer: await answerWithGroq(question, req.body.bookId) });
+  } catch {
+    res.status(502).json({ error: "Groq request failed." });
   }
-  const verses = getVersesForBook(bookId);
-  const verse = verses.find((v) => v.id === verseId);
-  if (!verse) {
-    res.status(404).json({ error: "Verse not found" });
-    return;
-  }
-  res.json(verse);
 });
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await (0, import_vite.createServer)({
-      server: { middlewareMode: true },
-      appType: "spa"
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = import_path.default.join(process.cwd(), "dist");
-    app.use(import_express.default.static(distPath));
-    app.get("*all", (_req, res) => {
-      res.sendFile(import_path.default.join(distPath, "index.html"));
-    });
+  if (process.env.NODE_ENV !== "production") app.use((await (0, import_vite.createServer)({ server: { middlewareMode: true }, appType: "spa" })).middlewares);
+  else {
+    app.use(import_express.default.static(import_path.default.join(process.cwd(), "dist")));
+    app.get("*all", (_req, res) => res.sendFile(import_path.default.join(process.cwd(), "dist/index.html")));
   }
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-  });
+  app.listen(PORT, "0.0.0.0", () => console.log(`Server running on http://0.0.0.0:${PORT}`));
 }
 startServer();
 //# sourceMappingURL=server.cjs.map
