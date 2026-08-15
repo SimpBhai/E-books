@@ -79,7 +79,7 @@ const App: React.FC = () => {
       }
     };
     fetchBooks();
-  }, [authenticated, currentView]);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('sutra_bookmarks', JSON.stringify(bookmarks));
