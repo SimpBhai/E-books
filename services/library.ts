@@ -23,11 +23,13 @@ function getLocalVersesForBook(bookId: string): Verse[] {
 export const getAvailableBooks = async (): Promise<Book[]> => {
   try {
     const res = await fetch('/api/books');
+    if (res.status === 401) throw new Error('AUTH_REQUIRED');
     if (!res.ok) throw new Error('Failed to fetch books from API');
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) return data;
     return UNIQUE_BOOKS;
   } catch (error) {
+    if (error instanceof Error && error.message === 'AUTH_REQUIRED') throw error;
     console.warn('API fetch failed, using local books data:', error);
     return UNIQUE_BOOKS;
   }
