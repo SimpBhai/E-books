@@ -62,7 +62,7 @@ const App: React.FC = () => {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    fetch('/api/auth/session').then(response => response.json()).then(data => setAuthenticated(Boolean(data.authenticated))).catch(() => setAuthenticated(false));
+    fetch('/api/auth/session', { credentials: 'same-origin' }).then(response => response.json()).then(data => setAuthenticated(Boolean(data.authenticated))).catch(() => setAuthenticated(false));
   }, []);
 
   // Bookmarks State
@@ -220,8 +220,9 @@ const App: React.FC = () => {
     })
     : [];
 
-  if (authenticated === null) return <div className="min-h-screen bg-stone-950" />;
-  if (!authenticated) return <LoginPage onLogin={() => setAuthenticated(true)} />;
+  const protectedView = currentView === 'library' || currentView === 'ai' || Boolean(selectedBook);
+  if (protectedView && authenticated === null) return <div className="min-h-screen bg-stone-950" />;
+  if (protectedView && !authenticated) return <LoginPage onLogin={() => setAuthenticated(true)} />;
 
   // View Routing
   if (currentView === 'donate') return <DonatePage onBack={() => setCurrentView('landing')} />;
