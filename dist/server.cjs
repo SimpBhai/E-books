@@ -24,7 +24,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 // server.ts
 var import_express = __toESM(require("express"), 1);
 var import_path = __toESM(require("path"), 1);
-var import_crypto = __toESM(require("crypto"), 1);
 var import_vite = require("vite");
 
 // data/metadata.ts
@@ -2824,11 +2823,6 @@ app.use((req, res, next) => {
   next();
 });
 app.use(import_express.default.json({ limit: "32kb" }));
-function safeEqual(a, b) {
-  const aa = Buffer.from(a);
-  const bb = Buffer.from(b);
-  return aa.length === bb.length && import_crypto.default.timingSafeEqual(aa, bb);
-}
 function rateLimit(store, key, max, windowMs) {
   const now = Date.now();
   const current = store.get(key);
@@ -2838,14 +2832,6 @@ function rateLimit(store, key, max, windowMs) {
   }
   current.count += 1;
   return current.count <= max;
-}
-function apiKey(req) {
-  return req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-}
-function authorizedApi(req) {
-  const key = apiKey(req);
-  const configured = (process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "").split(",").map((x) => x.trim()).filter(Boolean);
-  return Boolean(key && configured.some((item) => safeEqual(item, key)));
 }
 app.get("/api/books", (_req, res) => res.json(UNIQUE_BOOKS));
 app.get("/api/books/search", (req, res) => {
@@ -2882,9 +2868,8 @@ Question: ${question}` }] }) });
   return data.choices?.[0]?.message?.content || "No answer was returned.";
 }
 app.post("/api/ai/answer", async (req, res) => {
-  const key = apiKey(req) || req.ip || "unknown";
-  if (!rateLimit(apiHits, key, 30, 6e4)) return res.status(429).json({ error: "Rate limit exceeded." });
-  if (!authorizedApi(req)) return res.status(401).json({ error: "A valid API key is required." });
+  const clientKey = req.ip || "unknown";
+  if (!rateLimit(apiHits, clientKey, 30, 6e4)) return res.status(429).json({ error: "Rate limit exceeded." });
   const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
   if (!question || question.length > 2e3) return res.status(400).json({ error: "Question must be 1\u20132000 characters." });
   if (!process.env.GROQ_API_KEY) return res.status(503).json({ error: "Groq is not configured." });

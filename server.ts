@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'path';
-import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
 import { BOOKS, UNIQUE_BOOKS } from './data/metadata';
 import { getChaptersForBook, getVersesForBook } from './services/bookRegistry';
@@ -28,11 +27,7 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: '32kb' }));
 
-function safeEqual(a: string, b: string) { const aa = Buffer.from(a); const bb = Buffer.from(b); return aa.length === bb.length && crypto.timingSafeEqual(aa, bb); }
 function rateLimit(store: Map<string, { count: number; resetAt: number }>, key: string, max: number, windowMs: number) { const now = Date.now(); const current = store.get(key); if (!current || current.resetAt < now) { store.set(key, { count: 1, resetAt: now + windowMs }); return true; } current.count += 1; return current.count <= max; }
-function apiKey(req: express.Request) { return req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim(); }
-function authorizedApi(req: express.Request) { const key = apiKey(req); const configured = (process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || '').split(',').map(x => x.trim()).filter(Boolean); return Boolean(key && configured.some(item => safeEqual(item, key))); }
-
 
 app.get('/api/books', (_req, res) => res.json(UNIQUE_BOOKS));
 app.get('/api/books/search', (req, res) => { const query = String(req.query.q ?? '').trim(); if (query.length < 2) return res.json([]); res.json(BOOKS.flatMap(book => getVersesForBook(book.id).filter(v => fuzzyMatch(query, v.id, v.sanskrit, v.transliteration, ...(v.sutrarth?.map(x => x.text) ?? []), ...(v.summary?.map(x => x.text) ?? []))).map(verse => ({ book, verse })))); });
@@ -49,9 +44,8 @@ async function answerWithGroq(question: string, bookId?: string) {
   return data.choices?.[0]?.message?.content || 'No answer was returned.';
 }
 app.post('/api/ai/answer', async (req, res) => {
-  const key = apiKey(req) || req.ip || 'unknown';
-  if (!rateLimit(apiHits, key, 30, 60_000)) return res.status(429).json({ error: 'Rate limit exceeded.' });
-  if (!authorizedApi(req)) return res.status(401).json({ error: 'A valid API key is required.' });
+  const clientKey = req.ip || 'unknown';
+  if (!rateLimit(apiHits, clientKey, 30, 60_000)) return res.status(429).json({ error: 'Rate limit exceeded.' });
   const question = typeof req.body?.question === 'string' ? req.body.question.trim() : '';
   if (!question || question.length > 2000) return res.status(400).json({ error: 'Question must be 1–2000 characters.' });
   if (!process.env.GROQ_API_KEY) return res.status(503).json({ error: 'Groq is not configured.' });
