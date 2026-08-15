@@ -9,7 +9,6 @@ import DonatePage from './components/DonatePage';
 import ContributePage from './components/ContributePage';
 import ProjectsPage from './components/ProjectsPage';
 import AIPage from './components/AIPage';
-import LoginPage from './components/LoginPage';
 import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid, MessageCircle } from 'lucide-react';
 
 // --- CONFIGURATION ---
@@ -59,12 +58,6 @@ const App: React.FC = () => {
   const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch('/api/auth/session', { credentials: 'same-origin' }).then(response => response.json()).then(data => setAuthenticated(Boolean(data.authenticated))).catch(() => setAuthenticated(false));
-  }, []);
-
   // Bookmarks State
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
     try {
@@ -82,11 +75,10 @@ const App: React.FC = () => {
         const available = await getAvailableBooks();
         setBooks(available);
       } catch (error) {
-        if (error instanceof Error && error.message === 'AUTH_REQUIRED') setAuthenticated(false);
-        else console.error('[v0] Failed to load books:', error);
+        console.error('[v0] Failed to load books:', error);
       }
     };
-    if (authenticated || currentView === 'landing') fetchBooks();
+    fetchBooks();
   }, [authenticated, currentView]);
 
   useEffect(() => {
@@ -224,10 +216,6 @@ const App: React.FC = () => {
         );
     })
     : [];
-
-  const protectedView = currentView === 'library' || currentView === 'ai' || Boolean(selectedBook);
-  if (protectedView && authenticated === null) return <div className="min-h-screen bg-stone-950" />;
-  if (protectedView && !authenticated) return <LoginPage onLogin={() => { setAuthenticated(true); setCurrentView(currentView === 'ai' ? 'ai' : 'library'); }} />;
 
   // View Routing
   if (currentView === 'donate') return <DonatePage onBack={() => setCurrentView('landing')} />;

@@ -25,7 +25,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var import_express = __toESM(require("express"), 1);
 var import_path = __toESM(require("path"), 1);
 var import_crypto = __toESM(require("crypto"), 1);
-var import_bcryptjs = __toESM(require("bcryptjs"), 1);
 var import_vite = require("vite");
 
 // data/metadata.ts
@@ -2807,25 +2806,6 @@ var fuzzyMatch = (query, ...targets) => {
 // server.ts
 var app = (0, import_express.default)();
 var PORT = 3e3;
-var SESSION_SECRET = process.env.SESSION_SECRET || "development-only-change-me";
-var sessions = /* @__PURE__ */ new Map();
-var attempts = /* @__PURE__ */ new Map();
-function configuredUsers() {
-  const users = [];
-  try {
-    const raw = process.env.SITE_USERS_JSON || "[]";
-    const parsed = JSON.parse(raw);
-    const candidates = Array.isArray(parsed) ? parsed : parsed && typeof parsed === "object" ? Object.entries(parsed).map(([id, value]) => ({ id, passwordHash: typeof value === "string" ? value : value?.passwordHash })) : [];
-    users.push(...candidates.filter((user) => typeof user?.id === "string" && typeof user?.passwordHash === "string" && user.id.length <= 128 && /^\$2[aby]?\$\d{2}\$/.test(user.passwordHash)));
-  } catch {
-  }
-  const legacyId = process.env.SITE_USERNAME;
-  const legacyPassword = process.env.SITE_PASSWORD;
-  if (legacyId && legacyPassword && !users.some((user) => user.id === legacyId)) {
-    users.push({ id: legacyId, passwordHash: legacyPassword });
-  }
-  return users;
-}
 var apiHits = /* @__PURE__ */ new Map();
 var allowedOrigin = process.env.API_ALLOWED_ORIGIN || "";
 app.disable("x-powered-by");
@@ -2844,32 +2824,10 @@ app.use((req, res, next) => {
   next();
 });
 app.use(import_express.default.json({ limit: "32kb" }));
-function tokenFor(value) {
-  return import_crypto.default.createHmac("sha256", SESSION_SECRET).update(value).digest("hex");
-}
 function safeEqual(a, b) {
   const aa = Buffer.from(a);
   const bb = Buffer.from(b);
   return aa.length === bb.length && import_crypto.default.timingSafeEqual(aa, bb);
-}
-function cookieValue(req) {
-  return req.headers.cookie?.match(/(?:^|; )sutra_session=([^;]+)/)?.[1];
-}
-function currentSession(req) {
-  const token = cookieValue(req);
-  const session = token ? sessions.get(token) : void 0;
-  if (!session || session.expiresAt <= Date.now()) {
-    if (token) sessions.delete(token);
-    return void 0;
-  }
-  return session;
-}
-function isSessionValid(req) {
-  return Boolean(currentSession(req));
-}
-function requireSession(req, res, next) {
-  if (!isSessionValid(req)) return res.status(401).json({ error: "Authentication required." });
-  next();
 }
 function rateLimit(store, key, max, windowMs) {
   const now = Date.now();
@@ -2889,57 +2847,25 @@ function authorizedApi(req) {
   const configured = (process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "").split(",").map((x) => x.trim()).filter(Boolean);
   return Boolean(key && configured.some((item) => safeEqual(item, key)));
 }
-app.post("/api/auth/login", async (req, res) => {
-  const ip = req.ip || "unknown";
-  if (!rateLimit(attempts, ip, 8, 15 * 6e4)) return res.status(429).json({ error: "Too many attempts. Try again later." });
-  const username = typeof req.body?.username === "string" ? req.body.username : "";
-  const password = typeof req.body?.password === "string" ? req.body.password : "";
-  const users = configuredUsers();
-  if (users.length === 0) return res.status(503).json({ error: "No users are configured. Add SITE_USERS_JSON in the deployment environment and redeploy." });
-  const user = users.find((candidate) => safeEqual(candidate.id, username));
-  let valid = false;
-  if (user) {
-    valid = /^\$2[aby]?\$\d{2}\$/.test(user.passwordHash) ? await import_bcryptjs.default.compare(password, user.passwordHash) : safeEqual(password, user.passwordHash);
-  }
-  if (!valid || !user) return res.status(401).json({ error: "Invalid credentials." });
-  const token = tokenFor(`${user.id}:${import_crypto.default.randomUUID()}`);
-  sessions.set(token, { userId: user.id, expiresAt: Date.now() + 8 * 60 * 6e4 });
-  res.setHeader("Set-Cookie", `sutra_session=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
-  res.json({ authenticated: true });
-});
-app.get("/api/auth/session", (req, res) => {
-  res.setHeader("Cache-Control", "no-store");
-  res.json({ authenticated: isSessionValid(req) });
-});
-app.post("/api/auth/logout", (req, res) => {
-  const token = cookieValue(req);
-  if (token) sessions.delete(token);
-  res.setHeader("Set-Cookie", "sutra_session=; HttpOnly; Path=/; SameSite=Strict; Max-Age=0");
-  res.json({ authenticated: false });
-});
-app.get("/api/auth/config", (_req, res) => {
-  res.setHeader("Cache-Control", "no-store");
-  res.json({ configured: configuredUsers().length > 0, userCount: configuredUsers().length });
-});
-app.get("/api/books", requireSession, (_req, res) => res.json(UNIQUE_BOOKS));
-app.get("/api/books/search", requireSession, (req, res) => {
+app.get("/api/books", (_req, res) => res.json(UNIQUE_BOOKS));
+app.get("/api/books/search", (req, res) => {
   const query = String(req.query.q ?? "").trim();
   if (query.length < 2) return res.json([]);
   res.json(BOOKS.flatMap((book) => getVersesForBook(book.id).filter((v) => fuzzyMatch(query, v.id, v.sanskrit, v.transliteration, ...v.sutrarth?.map((x) => x.text) ?? [], ...v.summary?.map((x) => x.text) ?? [])).map((verse) => ({ book, verse }))));
 });
-app.get("/api/books/:id", requireSession, (req, res) => {
+app.get("/api/books/:id", (req, res) => {
   const book = BOOKS.find((item) => item.id === req.params.id);
   return book ? res.json(book) : res.status(404).json({ error: "Book not found" });
 });
-app.get(["/api/books/:id/chapters", "/api/books/:id/content"], requireSession, (req, res) => {
+app.get(["/api/books/:id/chapters", "/api/books/:id/content"], (req, res) => {
   const book = BOOKS.find((item) => item.id === req.params.id);
   return book ? res.json(getChaptersForBook(book.id)) : res.status(404).json({ error: "Book not found" });
 });
-app.get("/api/books/:id/verses", requireSession, (req, res) => {
+app.get("/api/books/:id/verses", (req, res) => {
   const book = BOOKS.find((item) => item.id === req.params.id);
   return book ? res.json(getVersesForBook(book.id)) : res.status(404).json({ error: "Book not found" });
 });
-app.get("/api/books/:bookId/verses/:verseId", requireSession, (req, res) => {
+app.get("/api/books/:bookId/verses/:verseId", (req, res) => {
   const verse = getVersesForBook(req.params.bookId).find((item) => item.id === req.params.verseId);
   return verse ? res.json(verse) : res.status(404).json({ error: "Verse not found" });
 });
