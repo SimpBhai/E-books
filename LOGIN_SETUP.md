@@ -20,7 +20,7 @@ Set its value to one-line JSON containing bcrypt password hashes:
 
 ## Troubleshooting
 
-- Confirm the variable is named exactly `SITE_USERS_JSON`, not `SITE_USER_JSON` or `USERS_JSON`.
+- Confirm the variable is named exactly `SITE_USERS_JSON` (not `SITE_USER_JSON`, `SITE_USERS`, or `USERS_JSON`). The login screen now checks `/api/auth/config` and clearly reports when zero valid users are loaded.
 - Confirm the value is valid JSON and contains bcrypt hashes beginning with `$2b$`, `$2a$`, or `$2y$`.
 - After changing the variable, redeploy; environment variables are not applied to an already-running deployment.
 - The server intentionally returns a generic credential error and never exposes hashes.

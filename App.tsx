@@ -78,11 +78,16 @@ const App: React.FC = () => {
   // Initialization
   useEffect(() => {
     const fetchBooks = async () => {
-      const available = await getAvailableBooks();
-      setBooks(available);
+      try {
+        const available = await getAvailableBooks();
+        setBooks(available);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'AUTH_REQUIRED') setAuthenticated(false);
+        else console.error('[v0] Failed to load books:', error);
+      }
     };
-    fetchBooks();
-  }, []);
+    if (authenticated || currentView === 'landing') fetchBooks();
+  }, [authenticated, currentView]);
 
   useEffect(() => {
     localStorage.setItem('sutra_bookmarks', JSON.stringify(bookmarks));
@@ -222,7 +227,7 @@ const App: React.FC = () => {
 
   const protectedView = currentView === 'library' || currentView === 'ai' || Boolean(selectedBook);
   if (protectedView && authenticated === null) return <div className="min-h-screen bg-stone-950" />;
-  if (protectedView && !authenticated) return <LoginPage onLogin={() => setAuthenticated(true)} />;
+  if (protectedView && !authenticated) return <LoginPage onLogin={() => { setAuthenticated(true); setCurrentView(currentView === 'ai' ? 'ai' : 'library'); }} />;
 
   // View Routing
   if (currentView === 'donate') return <DonatePage onBack={() => setCurrentView('landing')} />;

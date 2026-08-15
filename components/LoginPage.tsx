@@ -7,6 +7,14 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [configStatus, setConfigStatus] = useState<'checking' | 'ready' | 'missing'>('checking');
+
+  React.useEffect(() => {
+    fetch('/api/auth/config', { credentials: 'same-origin', cache: 'no-store' })
+      .then(response => response.json())
+      .then(data => setConfigStatus(data.configured ? 'ready' : 'missing'))
+      .catch(() => setConfigStatus('missing'));
+  }, []);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -27,6 +35,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
       <p className="text-xs font-bold uppercase tracking-[0.25em] text-yellow-300">SutraLibrary</p>
       <h1 className="mt-3 font-serif text-4xl font-bold">Private archive</h1>
       <p className="mt-3 leading-6 text-stone-300">Sign in with the credentials provided by the site owner.</p>
+      {configStatus === 'missing' && <p role="alert" className="mt-4 rounded-xl border border-red-300/30 bg-red-950/50 p-3 text-sm text-red-200">Login is not configured on this deployment. Add the exact <code>SITE_USERS_JSON</code> environment variable, then redeploy.</p>}
       <div className="mt-8 flex flex-col gap-4">
         <label className="flex flex-col gap-2 text-sm font-semibold">Username<input required autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} className="rounded-xl border border-white/15 bg-black/20 px-4 py-3 text-white outline-none focus:border-yellow-300" /></label>
         <label className="flex flex-col gap-2 text-sm font-semibold">Password

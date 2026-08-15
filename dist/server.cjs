@@ -2815,9 +2815,8 @@ function configuredUsers() {
   try {
     const raw = process.env.SITE_USERS_JSON || "[]";
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      users.push(...parsed.filter((user) => typeof user?.id === "string" && typeof user?.passwordHash === "string" && user.id.length <= 128 && /^\$2[aby]?\$\d{2}\$/.test(user.passwordHash)));
-    }
+    const candidates = Array.isArray(parsed) ? parsed : parsed && typeof parsed === "object" ? Object.entries(parsed).map(([id, value]) => ({ id, passwordHash: typeof value === "string" ? value : value?.passwordHash })) : [];
+    users.push(...candidates.filter((user) => typeof user?.id === "string" && typeof user?.passwordHash === "string" && user.id.length <= 128 && /^\$2[aby]?\$\d{2}\$/.test(user.passwordHash)));
   } catch {
   }
   const legacyId = process.env.SITE_USERNAME;
@@ -2896,6 +2895,7 @@ app.post("/api/auth/login", async (req, res) => {
   const username = typeof req.body?.username === "string" ? req.body.username : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const users = configuredUsers();
+  if (users.length === 0) return res.status(503).json({ error: "No users are configured. Add SITE_USERS_JSON in the deployment environment and redeploy." });
   const user = users.find((candidate) => safeEqual(candidate.id, username));
   let valid = false;
   if (user) {
@@ -2907,12 +2907,19 @@ app.post("/api/auth/login", async (req, res) => {
   res.setHeader("Set-Cookie", `sutra_session=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=28800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
   res.json({ authenticated: true });
 });
-app.get("/api/auth/session", (req, res) => res.json({ authenticated: isSessionValid(req) }));
+app.get("/api/auth/session", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ authenticated: isSessionValid(req) });
+});
 app.post("/api/auth/logout", (req, res) => {
   const token = cookieValue(req);
   if (token) sessions.delete(token);
   res.setHeader("Set-Cookie", "sutra_session=; HttpOnly; Path=/; SameSite=Strict; Max-Age=0");
   res.json({ authenticated: false });
+});
+app.get("/api/auth/config", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ configured: configuredUsers().length > 0, userCount: configuredUsers().length });
 });
 app.get("/api/books", requireSession, (_req, res) => res.json(UNIQUE_BOOKS));
 app.get("/api/books/search", requireSession, (req, res) => {
