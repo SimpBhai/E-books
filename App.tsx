@@ -256,7 +256,7 @@ const App: React.FC = () => {
                </div>
 
                <div className="flex-1 flex flex-col items-center justify-center w-full max-w-4xl px-4 py-2 sm:py-6 z-10 text-center relative">
-                  <h1 className="text-5xl md:text-7xl font-deva font-bold text-yellow-300 mb-3 sm:mb-6 drop-shadow-[0_4px_3px_rgba(0,0,0,0.9)] [text-shadow:_0_0_30px_rgba(253,224,71,0.5)] tracking-wide">
+                  <h1 className="relative -top-3 sm:top-0 text-5xl md:text-7xl font-deva font-bold text-yellow-300 mb-3 sm:mb-6 drop-shadow-[0_4px_3px_rgba(0,0,0,0.9)] [text-shadow:_0_0_30px_rgba(253,224,71,0.5)] tracking-wide">
                     • सत्यप्रतिष्ठा •
                   </h1>
                   <div className="space-y-3 text-white/90 font-deva text-xl md:text-3xl font-medium leading-relaxed drop-shadow-md text-center">
@@ -265,7 +265,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="w-24 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent mt-6 mb-4 sm:mt-10 sm:mb-8 opacity-80" />
                   <p className="text-stone-300 font-serif tracking-[0.2em] text-sm uppercase">A project by</p>
-                  <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 font-serif tracking-wide">Sanatani Akhada</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 font-serif tracking-wide">Ṛtaṃbharā</h3>
                </div>
 
                    <div className="relative -top-20 sm:top-0 w-full max-w-5xl px-4 pb-4 sm:px-6 sm:pb-12 z-10 mt-0 sm:mt-4">
