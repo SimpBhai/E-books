@@ -8,7 +8,7 @@ import ReaderView from './components/ReaderView';
 import DonatePage from './components/DonatePage';
 import ContributePage from './components/ContributePage';
 import ProjectsPage from './components/ProjectsPage';
-import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid } from 'lucide-react';
+import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Instagram, Twitter, Heart, HelpCircle, Feather, X, LayoutGrid } from 'lucide-react';
 
 // --- CONFIGURATION ---
 type ViewState = 'landing' | 'library' | 'donate' | 'contribute' | 'projects';
@@ -299,9 +299,11 @@ const App: React.FC = () => {
                        </button>
                    </div>
                    
-                   <div className="flex justify-center gap-8 mt-12 text-white/50 font-semibold text-sm">
-                      <button className="flex items-center gap-2 hover:text-white transition-colors"><Facebook size={18}/> Social Media</button>
-                      <button className="flex items-center gap-2 hover:text-white transition-colors"><Youtube size={18}/> YouTube</button>
+                   <div className="flex items-center justify-center gap-5 mt-10 text-white/50">
+                      <a href="https://twitter.com" target="_blank" rel="noreferrer" aria-label="Twitter" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Twitter size={16}/></a>
+                      <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Instagram size={16}/></a>
+                      <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Facebook size={16}/></a>
+                      <a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="YouTube" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Youtube size={16}/></a>
                    </div>
                </div>
             </div>

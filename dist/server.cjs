@@ -30,6 +30,7 @@ var import_vite = require("vite");
 var BOOKS = [
   {
     id: "ashtadhyayi",
+    schema: "sutra",
     title: "Ashtadhyayi",
     author: "Panini",
     category: "Grammar",
@@ -42,6 +43,7 @@ var BOOKS = [
   },
   {
     id: "yogasutra",
+    schema: "sutra",
     title: "Yoga Darshan (Yoga Sutras)",
     author: "Patanjali",
     category: "Philosophy",
@@ -50,6 +52,7 @@ var BOOKS = [
   },
   {
     id: "manusmriti",
+    schema: "smriti",
     title: "Manusmriti",
     author: "Manu",
     category: "Dharma\u015B\u0101stra",
@@ -58,6 +61,7 @@ var BOOKS = [
   },
   {
     id: "bhagavad-gita",
+    schema: "itihasa",
     title: "Bhagavad Gita",
     author: "Vyasa",
     category: "Philosophy",
@@ -2801,11 +2805,18 @@ function normalizeManusmriti(records) {
 var MANUSMRITI_DATA = normalizeManusmriti([]);
 
 // services/bookRegistry.ts
+var BOOK_SCHEMAS = {
+  sutra: { id: "sutra", label: "S\u016Btra", description: "Numbered aphorisms with Sanskrit, transliteration, meanings, and commentaries.", supports: ["sanskrit", "transliteration", "sutrarth", "summary", "commentaries"] },
+  smriti: { id: "smriti", label: "Sm\u1E5Bti", description: "Adhy\u0101ya and verse texts with translations and multiple bh\u0101\u1E63ya layers.", supports: ["sanskrit", "transliteration", "translation", "commentaries", "sourcePage"] },
+  purana: { id: "purana", label: "Pur\u0101\u1E47a", description: "Book, skandha, adhy\u0101ya, verse, translation, and multiple commentary layers.", supports: ["sanskrit", "transliteration", "translation", "commentaries", "sourcePage"] },
+  itihasa: { id: "itihasa", label: "Itih\u0101sa", description: "K\u0101\u1E47\u1E0Da/parva and adhy\u0101ya-aware narrative text.", supports: ["sanskrit", "transliteration", "translation", "commentaries"] },
+  custom: { id: "custom", label: "Custom", description: "A book-specific adapter defined by its own JSON schema.", supports: ["custom"] }
+};
 var BOOK_ADAPTERS = {
-  ashtadhyayi: { chapters: ASHTADHYAYI_DATA },
-  yogasutra: { chapters: YOGASUTRA_DATA },
-  manusmriti: { chapters: MANUSMRITI_DATA },
-  "bhagavad-gita": { chapters: [] }
+  ashtadhyayi: { schema: "sutra", chapters: ASHTADHYAYI_DATA },
+  yogasutra: { schema: "sutra", chapters: YOGASUTRA_DATA },
+  manusmriti: { schema: "smriti", chapters: MANUSMRITI_DATA },
+  "bhagavad-gita": { schema: "itihasa", chapters: [] }
 };
 function getChaptersForBook(bookId) {
   const adapter = BOOK_ADAPTERS[bookId];
@@ -2852,10 +2863,18 @@ app.use((req, res, next) => {
 });
 app.use(import_express.default.json({ limit: "32kb" }));
 app.get("/api/books", (_req, res) => res.json(UNIQUE_BOOKS));
+app.get("/api/schemas", (_req, res) => res.json(BOOK_SCHEMAS));
+app.get("/api/books/:id/schema", (req, res) => {
+  const book = UNIQUE_BOOKS.find((item) => item.id === req.params.id);
+  if (!book) return res.status(404).json({ error: "Book not found" });
+  const schemaId = book.schema || BOOK_ADAPTERS[book.id]?.schema || "custom";
+  return res.json({ bookId: book.id, schema: BOOK_SCHEMAS[schemaId] || BOOK_SCHEMAS.custom });
+});
 app.get("/api/books/search", (req, res) => {
   const query = String(req.query.q ?? "").trim();
   if (query.length < 2) return res.json([]);
-  res.json(BOOKS.flatMap((book) => getVersesForBook(book.id).filter((v) => fuzzyMatch(query, v.id, v.sanskrit, v.transliteration, ...v.sutrarth?.map((x) => x.text) ?? [], ...v.summary?.map((x) => x.text) ?? [])).map((verse) => ({ book, verse }))));
+  const results = UNIQUE_BOOKS.flatMap((book) => getVersesForBook(book.id).filter((verse) => fuzzyMatch(query, verse.id, verse.sanskrit, verse.transliteration, ...verse.sutrarth?.map((item) => item.text) ?? [], ...verse.summary?.map((item) => item.text) ?? [], ...verse.commentaries?.flatMap((commentary) => [commentary.text, ...commentary.translations?.map((item) => item.text) ?? []]) ?? [])).map((verse) => ({ book, verse })));
+  res.json(results);
 });
 app.get("/api/books/:id", (req, res) => {
   const book = BOOKS.find((item) => item.id === req.params.id);

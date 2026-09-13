@@ -21,6 +21,17 @@ interface Commentary { id: string; author: string; language: string; text: strin
 
 Raw schemas may differ by book. Put the raw source in its own adapter, normalize it to this contract, then register the adapter in `services/bookRegistry.ts`. The API and library use the adapter output; do not duplicate book records in the UI.
 
+### Schema families and API
+
+Books can share a family by setting `schema` in `data/metadata.ts`: `sutra`, `smriti`, `purana`, or `itihasa`. A book can use `custom` or any project-specific schema ID when it needs different fields. Register the family definition in `BOOK_SCHEMAS` and the book adapter in `BOOK_ADAPTERS`.
+
+- `GET /api/schemas` returns all schema definitions.
+- `GET /api/books/:id/schema` returns the schema selected for one book.
+- `GET /api/books/:id/verses` returns normalized verses with transliteration and every `commentaries[]` entry, including each commentary's translations.
+- Keep the source-specific JSON in `data/` or a server-side data service, then normalize it once in the adapter. This allows all Purāṇas or Smṛtis to share a schema while custom books remain independent.
+
+The library de-duplicates catalog records by stable `id`, and API search uses `UNIQUE_BOOKS`, so duplicate metadata entries cannot render duplicate cards.
+
 ### Manusmriti with Medhātithi
 
 `data/manusmriti.ts` defines the source-specific record:

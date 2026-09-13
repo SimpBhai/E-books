@@ -1,5 +1,8 @@
+export type BookSchemaFamily = 'sutra' | 'smriti' | 'purana' | 'itihasa' | 'custom';
+
 export interface Book {
   id: string;
+  schema?: BookSchemaFamily | string;
   title: string;
   author: string;
   description: string;
