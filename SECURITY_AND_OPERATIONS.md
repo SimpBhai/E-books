@@ -4,41 +4,10 @@
 
 Set these in deployment settings; never commit them:
 
-- `SITE_USERS_JSON`: JSON array of users with bcrypt hashes. Example:
-  `[{"id":"user1","passwordHash":"$2b$10$..."},{"id":"admin","passwordHash":"$2b$10$..."}]`
-  Do not commit this value to GitHub. `SITE_USERNAME` and `SITE_PASSWORD` remain supported as a single-user compatibility fallback during migration.
-- `SESSION_SECRET`: random value used to sign session tokens; change it to invalidate existing sessions.
-- `GROQ_API_KEY`: server-only Groq Console credential.
-- `GROQ_API_KEYS`: comma-separated client keys for Discord, Telegram, or other websites. These are not Groq keys. Rotate by replacing the list and redeploying.
-- `GROQ_MODEL`: optional Groq model override. The default is `llama-3.3-70b-versatile`.
-- `API_ALLOWED_ORIGIN`: optional exact origin allowed for browser API clients; leave unset for non-browser bot clients.
+No environment variables are required for the public reader. HTTPS is recommended in production.
 
 The website is protected before the app shell loads. Login uses an HTTP-only, SameSite cookie with an eight-hour expiry. Failed logins are throttled. Logout clears the session. HTTPS is required in production.
 
-### Adding users
-
-1. Keep each user object in the `SITE_USERS_JSON` environment variable. `id` is the login username.
-2. `passwordHash` must be a bcrypt hash beginning with `$2b$`, `$2a$`, or `$2y$`.
-3. Store the complete JSON as one environment-variable value, for example:
-   `[{"id":"user1","passwordHash":"$2b$10$HRQq9gNUFI3rsJAgmwhpZuBOev1c2MKAMqcMCfqraikpIAc80zayS"}]`
-4. Redeploy or restart the server after changing the variable. Never place plaintext passwords, hashes, or this JSON in source files or browser code.
-
-The supplied test accounts can be configured directly as the value of `SITE_USERS_JSON`; the hashes are accepted by the server and are never returned to clients.
-
-## External AI API
-
-Endpoint: `POST /api/ai/answer`
-
-```http
-Authorization: Bearer client-key
-Content-Type: application/json
-```
-
-```json
-{"question":"What does the text say about discipline?","bookId":"yogasutra"}
-```
-
-Keys are checked server-side, never sent to Groq, and rate-limited. Keep separate keys for separate bots or people so a single compromised key can be rotated. The endpoint returns JSON with `answer`; it rejects missing keys, oversized questions, and excessive requests. Do not expose `GROQ_API_KEY` in a client application.
 
 ## Adding a GitHub-backed book
 

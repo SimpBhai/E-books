@@ -2834,7 +2834,6 @@ var fuzzyMatch = (query, ...targets) => {
 // server.ts
 var app = (0, import_express.default)();
 var PORT = 3e3;
-var apiHits = /* @__PURE__ */ new Map();
 var allowedOrigin = process.env.API_ALLOWED_ORIGIN || "";
 app.disable("x-powered-by");
 app.use((req, res, next) => {
@@ -2846,22 +2845,12 @@ app.use((req, res, next) => {
   res.header("Referrer-Policy", "strict-origin-when-cross-origin");
   res.header("X-Frame-Options", "DENY");
   res.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  res.header("Content-Security-Policy", "default-src 'self'; connect-src 'self' https://api.groq.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'");
+  res.header("Content-Security-Policy", "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'");
   if (process.env.NODE_ENV === "production") res.header("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
 app.use(import_express.default.json({ limit: "32kb" }));
-function rateLimit(store, key, max, windowMs) {
-  const now = Date.now();
-  const current = store.get(key);
-  if (!current || current.resetAt < now) {
-    store.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  current.count += 1;
-  return current.count <= max;
-}
 app.get("/api/books", (_req, res) => res.json(UNIQUE_BOOKS));
 app.get("/api/books/search", (req, res) => {
   const query = String(req.query.q ?? "").trim();
@@ -2883,30 +2872,6 @@ app.get("/api/books/:id/verses", (req, res) => {
 app.get("/api/books/:bookId/verses/:verseId", (req, res) => {
   const verse = getVersesForBook(req.params.bookId).find((item) => item.id === req.params.verseId);
   return verse ? res.json(verse) : res.status(404).json({ error: "Verse not found" });
-});
-async function answerWithGroq(question, bookId) {
-  const context = (bookId ? getVersesForBook(bookId) : BOOKS.flatMap((book) => getVersesForBook(book.id))).slice(0, 80).map((v) => `${v.id}: ${v.sanskrit}
-${v.transliteration}
-${(v.summary ?? []).map((x) => x.text).join(" ")}`).join("\n\n");
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, body: JSON.stringify({ model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile", temperature: 0.2, messages: [{ role: "system", content: "Answer only from the supplied Sanskrit library context. If context is insufficient, say so. Cite verse ids when possible." }, { role: "user", content: `Library context:
-${context}
-
-Question: ${question}` }] }) });
-  if (!response.ok) throw new Error("Groq request failed");
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || "No answer was returned.";
-}
-app.post("/api/ai/answer", async (req, res) => {
-  const clientKey = req.ip || "unknown";
-  if (!rateLimit(apiHits, clientKey, 30, 6e4)) return res.status(429).json({ error: "Rate limit exceeded." });
-  const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
-  if (!question || question.length > 2e3) return res.status(400).json({ error: "Question must be 1\u20132000 characters." });
-  if (!process.env.GROQ_API_KEY) return res.status(503).json({ error: "Groq is not configured." });
-  try {
-    res.json({ answer: await answerWithGroq(question, typeof req.body.bookId === "string" ? req.body.bookId : void 0) });
-  } catch {
-    res.status(502).json({ error: "AI provider unavailable." });
-  }
 });
 async function startServer() {
   if (process.env.NODE_ENV !== "production") app.use((await (0, import_vite.createServer)({ server: { middlewareMode: true, hmr: false }, appType: "spa" })).middlewares);
