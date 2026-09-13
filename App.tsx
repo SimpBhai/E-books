@@ -255,27 +255,27 @@ const App: React.FC = () => {
                   </form>
                </div>
 
-               <div className="flex-1 flex flex-col items-center justify-center w-full max-w-4xl px-4 py-6 z-10 text-center relative">
-                  <h1 className="text-5xl md:text-7xl font-deva font-bold text-yellow-300 mb-6 drop-shadow-[0_4px_3px_rgba(0,0,0,0.9)] [text-shadow:_0_0_30px_rgba(253,224,71,0.5)] tracking-wide">
+               <div className="flex-1 flex flex-col items-center justify-center w-full max-w-4xl px-4 py-2 sm:py-6 z-10 text-center relative">
+                  <h1 className="text-5xl md:text-7xl font-deva font-bold text-yellow-300 mb-3 sm:mb-6 drop-shadow-[0_4px_3px_rgba(0,0,0,0.9)] [text-shadow:_0_0_30px_rgba(253,224,71,0.5)] tracking-wide">
                     • सत्यप्रतिष्ठा •
                   </h1>
                   <div className="space-y-3 text-white/90 font-deva text-xl md:text-3xl font-medium leading-relaxed drop-shadow-md text-center">
                      <p>सत्ये प्रतिष्ठिता धर्ममार्गः।</p>
                      <p>सत्यस्य स्थापना एव धर्मः।।</p>
                   </div>
-                  <div className="w-24 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent mt-10 mb-8 opacity-80" />
+                  <div className="w-24 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent mt-6 mb-4 sm:mt-10 sm:mb-8 opacity-80" />
                   <p className="text-stone-300 font-serif tracking-[0.2em] text-sm uppercase">A project by</p>
                   <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 font-serif tracking-wide">Sanatani Akhada</h3>
                </div>
 
-                   <div className="w-full max-w-5xl px-6 pb-12 z-10 mt-4">
-                   <div className="flex items-center justify-center gap-5 mb-8 text-white/60">
+                   <div className="w-full max-w-5xl px-4 pb-4 sm:px-6 sm:pb-12 z-10 mt-0 sm:mt-4">
+                   <div className="flex items-center justify-center gap-4 mb-3 sm:gap-5 sm:mb-8 text-white/60">
                       <a href="https://twitter.com" target="_blank" rel="noreferrer" aria-label="Twitter" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Twitter size={16}/></a>
                       <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Instagram size={16}/></a>
                       <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Facebook size={16}/></a>
                       <a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="YouTube" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Youtube size={16}/></a>
                    </div>
-                   <div className="flex flex-wrap justify-center gap-6 md:gap-12">
+                   <div className="flex flex-wrap justify-center gap-3 sm:gap-6 md:gap-12">
                        <button onClick={() => setCurrentView('library')} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-yellow-100 rounded-full flex items-center justify-center border border-white/20">
                                 <BookOpen size={24} />
