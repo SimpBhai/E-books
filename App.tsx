@@ -8,11 +8,10 @@ import ReaderView from './components/ReaderView';
 import DonatePage from './components/DonatePage';
 import ContributePage from './components/ContributePage';
 import ProjectsPage from './components/ProjectsPage';
-import AIPage from './components/AIPage';
-import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid, MessageCircle } from 'lucide-react';
+import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid } from 'lucide-react';
 
 // --- CONFIGURATION ---
-type ViewState = 'landing' | 'library' | 'ai' | 'donate' | 'contribute' | 'projects';
+type ViewState = 'landing' | 'library' | 'donate' | 'contribute' | 'projects';
 
 interface GlobalHeaderButtonsProps {
   theme: 'light' | 'dark';
@@ -221,7 +220,6 @@ const App: React.FC = () => {
   if (currentView === 'donate') return <DonatePage onBack={() => setCurrentView('landing')} />;
   if (currentView === 'contribute') return <ContributePage onBack={() => setCurrentView('landing')} />;
   if (currentView === 'projects') return <ProjectsPage onBack={() => setCurrentView('landing')} />;
-  if (currentView === 'ai') return <AIPage onBack={() => setCurrentView('library')} />;
 
   return (
     <div className={`min-h-screen w-full flex flex-col ${darkMode ? 'dark bg-stone-900 text-stone-100' : 'bg-stone-50 text-stone-900'}`}>
@@ -279,11 +277,6 @@ const App: React.FC = () => {
                             <span className="block font-deva font-bold text-white text-base">ई-पुस्तकम्</span>
                        </button>
 
-                       <button onClick={() => setCurrentView('ai')} aria-label="Open AI chat" className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
-                            <div className="w-14 h-14 bg-yellow-300 text-stone-950 rounded-full flex items-center justify-center border border-yellow-200 shadow-lg shadow-yellow-300/20"><MessageCircle size={24} /></div>
-                            <span className="block font-deva font-bold text-white text-base">AI संवाद</span>
-                       </button>
-
                        <button onClick={() => setCurrentView('contribute')} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-red-100 rounded-full flex items-center justify-center border border-white/20">
                                 <Feather size={24} />
@@ -315,13 +308,13 @@ const App: React.FC = () => {
         ) : (
         /* LIBRARY VIEW */
         <>
-        <header className="h-20 border-b border-stone-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-4 md:px-12 gap-4">
+        <header className="min-h-16 border-b border-stone-200 bg-white/90 backdrop-blur-md sticky top-0 z-10 flex flex-wrap items-center justify-between px-3 py-3 sm:px-4 md:min-h-20 md:px-12 gap-3">
            <div className="flex items-center space-x-3 cursor-pointer hover:opacity-80 shrink-0" onClick={() => { setCurrentView('landing'); setLibraryQuery(''); }}>
              <div className="p-2 bg-ochre-600 rounded-lg text-white"><Library size={24} /></div>
              <div><h1 className="font-serif font-bold text-2xl text-stone-800 hidden md:block">SutraLibrary</h1></div>
            </div>
 
-           <div className="flex-1 max-w-md mx-auto relative">
+           <div className="order-3 w-full max-w-none sm:order-none sm:flex-1 sm:max-w-md sm:mx-auto relative">
                 <input 
                   type="text" placeholder="Search books or sutras..." value={libraryQuery}
                   onChange={(e) => setLibraryQuery(e.target.value)}
@@ -331,15 +324,14 @@ const App: React.FC = () => {
                 {libraryQuery && <button onClick={() => setLibraryQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"><X size={14} /></button>}
            </div>
 
-                         <div className="flex items-center space-x-2 md:space-x-4 shrink-0">
-              <button onClick={() => setCurrentView('ai')} className="hidden md:block rounded-lg px-3 py-2 text-sm font-bold text-ochre-700 hover:bg-ochre-50">Ask AI</button>
+                         <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-4 shrink-0">
               <GlobalHeaderButtons theme="light" darkMode={darkMode} setDarkMode={setDarkMode} onNavigate={(v) => { setSelectedBook(null); setCurrentView(v); }} />
               <div className="w-px h-6 bg-stone-300 mx-2 hidden md:block"></div>
               <button onClick={() => setIsBookmarksOpen(true)} className="text-stone-600 hover:text-ochre-700 transition-colors"><BookmarkIcon size={20} /></button>
            </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 md:px-12 py-12 flex-1 min-h-[calc(100vh-80px)]">
+           <main className="max-w-7xl mx-auto w-full px-4 py-7 sm:px-6 md:px-12 md:py-12 flex-1 min-h-[calc(100vh-80px)]">
            <div className="flex justify-between items-center mb-6">
               <button onClick={() => setCurrentView('landing')} className="flex items-center text-sm font-bold text-stone-400 hover:text-ochre-600 uppercase tracking-wider transition-colors">
                   <ChevronLeft size={16} className="mr-1" /> Back to Home
