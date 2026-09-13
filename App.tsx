@@ -8,7 +8,7 @@ import ReaderView from './components/ReaderView';
 import DonatePage from './components/DonatePage';
 import ContributePage from './components/ContributePage';
 import ProjectsPage from './components/ProjectsPage';
-import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid } from 'lucide-react';
+import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Instagram, Twitter, Heart, HelpCircle, Feather, X, LayoutGrid } from 'lucide-react';
 
 // --- CONFIGURATION ---
 type ViewState = 'landing' | 'library' | 'donate' | 'contribute' | 'projects';
@@ -268,7 +268,13 @@ const App: React.FC = () => {
                   <h3 className="text-2xl md:text-3xl font-bold text-white mt-2 font-serif tracking-wide">Sanatani Akhada</h3>
                </div>
 
-               <div className="w-full max-w-5xl px-6 pb-12 z-10 mt-4">
+                   <div className="w-full max-w-5xl px-6 pb-12 z-10 mt-4">
+                   <div className="flex items-center justify-center gap-5 mb-8 text-white/60">
+                      <a href="https://twitter.com" target="_blank" rel="noreferrer" aria-label="Twitter" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Twitter size={16}/></a>
+                      <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Instagram size={16}/></a>
+                      <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Facebook size={16}/></a>
+                      <a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="YouTube" className="rounded-full p-2 hover:bg-white/10 hover:text-white transition-colors"><Youtube size={16}/></a>
+                   </div>
                    <div className="flex flex-wrap justify-center gap-6 md:gap-12">
                        <button onClick={() => setCurrentView('library')} className="group flex flex-col items-center gap-3 transition-all hover:-translate-y-1">
                             <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-yellow-100 rounded-full flex items-center justify-center border border-white/20">
@@ -298,11 +304,7 @@ const App: React.FC = () => {
                             <span className="block font-deva font-bold text-white text-base">प्रकल्पाः</span>
                        </button>
                    </div>
-                   
-                   <div className="flex justify-center gap-8 mt-12 text-white/50 font-semibold text-sm">
-                      <button className="flex items-center gap-2 hover:text-white transition-colors"><Facebook size={18}/> Social Media</button>
-                      <button className="flex items-center gap-2 hover:text-white transition-colors"><Youtube size={18}/> YouTube</button>
-                   </div>
+
                </div>
             </div>
         ) : (
