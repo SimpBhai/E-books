@@ -2,6 +2,35 @@
 
 This application is designed to be flexible and support various schemas (e.g., Simple Poetry, Darshan Sastra, Grammar).
 
+## 0. Normalized schema
+
+Every adapter returns `Chapter[]`:
+
+```ts
+interface Chapter { id: number; title: string; sections: Section[] }
+interface Section { id: number; chapterId: number; title?: string; verses: Verse[] }
+interface Verse {
+  id: string; chapter: number; number: number; sanskrit: string;
+  transliteration: string; summary?: ContentText[];
+  sutrarth?: ContentText[]; commentaries?: Commentary[];
+  isVerified?: boolean;
+}
+interface ContentText { id: string; language: string; author: string; text: string }
+interface Commentary { id: string; author: string; language: string; text: string; translations?: ContentText[] }
+```
+
+Raw schemas may differ by book. Put the raw source in its own adapter, normalize it to this contract, then register the adapter in `services/bookRegistry.ts`. The API and library use the adapter output; do not duplicate book records in the UI.
+
+### Manusmriti with Medhātithi
+
+`data/manusmriti.ts` defines the source-specific record:
+
+```ts
+{ id, adhyaya, verse, sanskrit, transliteration?, translation, medhatithi, sourcePage?, isVerified }
+```
+
+The adapter maps `translation` to `summary` and `medhatithi` to `commentaries`, so the reader can render both fully. The repository currently contains the adapter but no fabricated verses: import the selected Internet Archive scan in verified chunks and record the exact archive identifier, volume, page, checksum, and attribution for every chunk. The source identified for this work is Ganganatha Jha's *Manusmriti with the Bhashya of Medhatithi*, University of Calcutta, 1920; choose the exact Internet Archive volume before importing.
+
 ## 1. Prepare Your Data
 Create a new file in the `data/` folder (e.g., `data/gita.ts`).
 Structure your content using the `Chapter` and `Verse` interfaces defined in `types.ts`.

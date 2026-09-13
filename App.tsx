@@ -9,7 +9,6 @@ import DonatePage from './components/DonatePage';
 import ContributePage from './components/ContributePage';
 import ProjectsPage from './components/ProjectsPage';
 import AIPage from './components/AIPage';
-import LoginPage from './components/LoginPage';
 import { Menu, Search, Moon, Sun, ChevronLeft, Share2, Library, ArrowRight, Bookmark as BookmarkIcon, Check, BookOpen, Loader2, Facebook, Youtube, Heart, HelpCircle, Feather, X, LayoutGrid, MessageCircle } from 'lucide-react';
 
 // --- CONFIGURATION ---
@@ -59,12 +58,6 @@ const App: React.FC = () => {
   const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch('/api/auth/session', { credentials: 'same-origin' }).then(response => response.json()).then(data => setAuthenticated(Boolean(data.authenticated))).catch(() => setAuthenticated(false));
-  }, []);
-
   // Bookmarks State
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
     try {
@@ -82,12 +75,11 @@ const App: React.FC = () => {
         const available = await getAvailableBooks();
         setBooks(available);
       } catch (error) {
-        if (error instanceof Error && error.message === 'AUTH_REQUIRED') setAuthenticated(false);
-        else console.error('[v0] Failed to load books:', error);
+        console.error('[v0] Failed to load books:', error);
       }
     };
-    if (authenticated || currentView === 'landing') fetchBooks();
-  }, [authenticated, currentView]);
+    fetchBooks();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('sutra_bookmarks', JSON.stringify(bookmarks));
@@ -224,10 +216,6 @@ const App: React.FC = () => {
         );
     })
     : [];
-
-  const protectedView = currentView === 'library' || currentView === 'ai' || Boolean(selectedBook);
-  if (protectedView && authenticated === null) return <div className="min-h-screen bg-stone-950" />;
-  if (protectedView && !authenticated) return <LoginPage onLogin={() => { setAuthenticated(true); setCurrentView(currentView === 'ai' ? 'ai' : 'library'); }} />;
 
   // View Routing
   if (currentView === 'donate') return <DonatePage onBack={() => setCurrentView('landing')} />;
@@ -419,20 +407,6 @@ const App: React.FC = () => {
              </div>
            )}
 
-           {/* Default State (No Query) */}
-           {!libraryQuery && filteredBooks.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredBooks.map(book => (
-                    <div key={book.id} onClick={() => setSelectedBook(book)} className="group bg-white rounded-xl border border-stone-200 shadow-sm hover:shadow-xl cursor-pointer p-8 flex flex-col transition-all">
-                      <span className="text-xs font-bold uppercase tracking-wider text-ochre-600 mb-2">{book.category}</span>
-                      <h3 className="font-serif text-2xl font-bold text-stone-800 mb-2">{book.title}</h3>
-                      <p className="text-stone-400 text-sm mb-4">by {book.author}</p>
-                      <p className="text-stone-600 text-sm mb-6 flex-1 line-clamp-3">{book.description}</p>
-                      <div className="flex items-center text-ochre-600 font-bold text-sm group-hover:translate-x-1 transition-transform">Start Reading <ArrowRight size={16} className="ml-2" /></div>
-                    </div>
-                  ))}
-              </div>
-           )}
         </main>
         </>
         )

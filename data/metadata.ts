@@ -20,7 +20,7 @@ export const BOOKS: Book[] = [
   },
   {
     id: 'manusmriti', title: 'Manusmriti', author: 'Manu', category: 'Dharmaśāstra',
-    description: 'A GitHub-versioned edition of the Manusmriti with a schema reserved for its chapter and verse conventions.',
+    description: 'Ganganatha Jha’s Internet Archive edition with Medhātithi commentary, imported in source-verified chapter and verse chunks.',
     structure: { level1: 'Adhyaya', level2: 'Verse', hasSections: false }
   },
   {

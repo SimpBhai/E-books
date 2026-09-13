@@ -1,6 +1,7 @@
 import { Chapter, Verse } from '../types';
 import { ASHTADHYAYI_DATA } from '../data/ashtadhyayi';
 import { YOGASUTRA_DATA } from '../data/yogasutra';
+import { MANUSMRITI_DATA } from '../data/manusmriti';
 
 type BookAdapter = { chapters: Chapter[]; normalize?: (input: unknown) => Chapter[] };
 
@@ -9,7 +10,7 @@ type BookAdapter = { chapters: Chapter[]; normalize?: (input: unknown) => Chapte
 export const BOOK_ADAPTERS: Record<string, BookAdapter> = {
   ashtadhyayi: { chapters: ASHTADHYAYI_DATA },
   yogasutra: { chapters: YOGASUTRA_DATA },
-  manusmriti: { chapters: [] },
+  manusmriti: { chapters: MANUSMRITI_DATA },
   'bhagavad-gita': { chapters: [] },
 };
 
