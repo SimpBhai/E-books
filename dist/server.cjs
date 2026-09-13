@@ -53,7 +53,7 @@ var BOOKS = [
     title: "Manusmriti",
     author: "Manu",
     category: "Dharma\u015B\u0101stra",
-    description: "A GitHub-versioned edition of the Manusmriti with a schema reserved for its chapter and verse conventions.",
+    description: "Ganganatha Jha\u2019s Internet Archive edition with Medh\u0101tithi commentary, imported in source-verified chapter and verse chunks.",
     structure: { level1: "Adhyaya", level2: "Verse", hasSections: false }
   },
   {
@@ -2771,11 +2771,40 @@ var YOGASUTRA_DATA = [
   }
 ];
 
+// data/manusmriti.ts
+function normalizeManusmriti(records) {
+  const chapters = /* @__PURE__ */ new Map();
+  const seen = /* @__PURE__ */ new Set();
+  for (const record of records) {
+    if (!record.id || seen.has(record.id)) continue;
+    seen.add(record.id);
+    const chapter = chapters.get(record.adhyaya) ?? {
+      id: record.adhyaya,
+      title: `Adhy\u0101ya ${record.adhyaya}`,
+      sections: [{ id: record.adhyaya, chapterId: record.adhyaya, title: "Verses", verses: [] }]
+    };
+    const verse = {
+      id: record.id,
+      chapter: record.adhyaya,
+      number: record.verse,
+      sanskrit: record.sanskrit,
+      transliteration: record.transliteration ?? "",
+      summary: [record.translation],
+      commentaries: [record.medhatithi],
+      isVerified: record.isVerified
+    };
+    chapter.sections[0].verses.push(verse);
+    chapters.set(record.adhyaya, chapter);
+  }
+  return [...chapters.values()].sort((a, b) => a.id - b.id);
+}
+var MANUSMRITI_DATA = normalizeManusmriti([]);
+
 // services/bookRegistry.ts
 var BOOK_ADAPTERS = {
   ashtadhyayi: { chapters: ASHTADHYAYI_DATA },
   yogasutra: { chapters: YOGASUTRA_DATA },
-  manusmriti: { chapters: [] },
+  manusmriti: { chapters: MANUSMRITI_DATA },
   "bhagavad-gita": { chapters: [] }
 };
 function getChaptersForBook(bookId) {
